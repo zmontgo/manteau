@@ -28,16 +28,18 @@ impl Block {
   /// consumer-extension path:
   ///
   /// ```
-  /// use manteau::render::MjmlWriter;
-  /// use manteau::templating::{Block, Element};
+  /// use manteau::{
+  ///   render::MjmlWriter,
+  ///   templating::{Block, Element},
+  /// };
   ///
   /// #[derive(Debug)]
   /// struct MyDivider;
   ///
   /// impl Element for MyDivider {
-  ///     fn write_mjml(&self, w: &mut MjmlWriter) {
-  ///         w.open("mj-divider").close_self();
-  ///     }
+  ///   fn write_mjml(&self, w: &mut MjmlWriter) {
+  ///     w.open("mj-divider").close_self();
+  ///   }
   /// }
   ///
   /// let _block = Block::custom(MyDivider);

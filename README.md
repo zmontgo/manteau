@@ -1,12 +1,10 @@
-# manteau
+# Manteau
 
-Typed builders for MJML emails with pluggable transports.
+Ergonomically build and send emails with Rust.
 
-Compose an MJML email through typed builders, render it to HTML and
-plaintext, and ship it through any `Transport` (Mailjet, stdout, mock, or
-your own). Validation lives on the type boundary — invalid email
-addresses, malformed colors, out-of-range percentages cannot exist as
-constructed values.
+Focused on providing typed guarantees that your email content is valid, and abstract away the messy details of talking to an email provider API.
+
+Currently, we support composing an MJML email with typed builders, rendering it, and shipping it via anything that implements the `Transport` trait. Mailjet is presently the only first-class implementer of this trait, but should you need another provider, we encourage you to consider contributing to this project and add it via a PR.
 
 ## Quick start
 
@@ -20,33 +18,34 @@ use manteau::{Address, MailjetTransport, Message, Transport};
 use manteau::templating::{Body, Column, Section, Template, Text};
 
 # async fn run() -> Result<(), Box<dyn std::error::Error>> {
-let template = Template::builder()
+  let template = Template::builder()
     .body(Body::builder()
-        .sections(vec![Section::builder()
-            .columns(vec![Column::builder()
-                .children(vec![Text::builder()
-                    .content("Hello, world!")
-                    .build()
-                    .into()])
-                .build()])
-            .build()])
-        .build())
+      .sections(vec![Section::builder()
+        .columns(vec![Column::builder()
+          .children(vec![Text::builder()
+            .content("Hello, world!")
+            .build()
+            .into()])
+          .build()])
+        .build()])
+      .build())
     .build();
-
-let msg = Message::builder()
+  
+  let msg = Message::builder()
     .from(Address::builder().email("hello@example.com".parse()?).build())
     .to(vec![Address::builder().email("you@example.com".parse()?).build()])
     .subject("Hi")
     .content(template)
     .build();
-
-let transport = MailjetTransport::builder()
+  
+  let transport = MailjetTransport::builder()
     .api_key(std::env::var("MAILJET_API_KEY")?)
     .api_secret(std::env::var("MAILJET_API_SECRET")?)
     .build();
-
-transport.send(&msg).await?;
-# Ok(()) }
+  
+  transport.send(&msg).await?;
+  # Ok(())
+}
 ```
 
 ## Feature flags
@@ -77,22 +76,22 @@ struct MyReceipt { ids: Vec<MessageId> }
 struct MyError;
 
 impl Receipt for MyReceipt {
-    fn ids(&self) -> &[MessageId] { &self.ids }
+  fn ids(&self) -> &[MessageId] { &self.ids }
 }
 
 impl TransportFailure for MyError {
-    fn is_transient(&self) -> bool { false }
-    fn is_auth(&self) -> bool { false }
-    fn is_message_rejected(&self) -> bool { false }
+  fn is_transient(&self) -> bool { false }
+  fn is_auth(&self) -> bool { false }
+  fn is_message_rejected(&self) -> bool { false }
 }
 
 #[async_trait]
 impl Transport for MyTransport {
-    type Receipt = MyReceipt;
-    type Error = MyError;
-    async fn send(&self, _: &Message) -> Result<Self::Receipt, Self::Error> {
-        Ok(MyReceipt { ids: vec![MessageId::new("custom-1")] })
-    }
+  type Receipt = MyReceipt;
+  type Error = MyError;
+  async fn send(&self, _: &Message) -> Result<Self::Receipt, Self::Error> {
+    Ok(MyReceipt { ids: vec![MessageId::new("custom-1")] })
+  }
 }
 ```
 
@@ -108,9 +107,9 @@ use manteau::render::MjmlWriter;
 struct MyDivider;
 
 impl Element for MyDivider {
-    fn write_mjml(&self, w: &mut MjmlWriter) {
-        w.open("mj-divider").close_self();
-    }
+  fn write_mjml(&self, w: &mut MjmlWriter) {
+    w.open("mj-divider").close_self();
+  }
 }
 
 let block = Block::custom(MyDivider);

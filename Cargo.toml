@@ -2,10 +2,10 @@
 name        = "manteau"
 version     = "0.1.0"
 edition     = "2024"
-authors     = ["the manteau contributors"]
+authors     = ["Zachary Montgomery"]
 license     = "MIT OR Apache-2.0"
-description = "Typed builders for MJML emails with pluggable transports (Mailjet, stdout, mock)."
-repository  = "https://github.com/USER/manteau"
+description = "Ergonomically build and send emails with Rust, using one of our supported providers or providing your own."
+repository  = "https://github.com/zmontgo/manteau"
 readme      = "README.md"
 keywords    = ["email", "mjml", "mailjet", "template", "transactional"]
 categories  = ["email", "template-engine"]
@@ -31,8 +31,9 @@ reqwest    = { version = "0.13", features = ["json"], default-features = false, 
 serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
-tokio    = { version = "1", features = ["macros", "rt-multi-thread"] }
-wiremock = "0.6"
+tokio              = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing-subscriber = "0.3"
+wiremock           = "0.6"
 
 [[test]]
 name             = "mailjet"
