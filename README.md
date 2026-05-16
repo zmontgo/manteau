@@ -17,30 +17,30 @@ manteau = { version = "0.1", features = ["mailjet"] }
 use manteau::{Address, MailjetTransport, Message, Transport};
 use manteau::templating::{Body, Column, Section, Template, Text};
 
-# async fn run() -> Result<(), Box<dyn std::error::Error>> {
-let template = Template::new(
-  Body::new().push_section(
-    Section::new().push_column(
-      Column::new().push(Text::new("Hello, world!")),
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
+  let template = Template::new(
+    Body::new().push_section(
+      Section::new().push_column(
+        Column::new().push(Text::new("Hello, world!")),
+      ),
     ),
-  ),
-);
-
-let msg = Message::new(
-  Address::new("hello@example.com".parse()?),
-  vec![Address::new("you@example.com".parse()?)],
-  "Hi",
-  template,
-);
-
-let transport = MailjetTransport::new(
-  std::env::var("MAILJET_API_KEY")?,
-  std::env::var("MAILJET_API_SECRET")?,
-);
-
-transport.send(&msg).await?;
-# Ok(())
-# }
+  );
+  
+  let msg = Message::new(
+    Address::new("hello@example.com".parse()?),
+    vec![Address::new("you@example.com".parse()?)],
+    "Hi",
+    template,
+  );
+  
+  let transport = MailjetTransport::new(
+    std::env::var("MAILJET_API_KEY")?,
+    std::env::var("MAILJET_API_SECRET")?,
+  );
+  
+  transport.send(&msg).await?;
+  Ok(())
+}
 ```
 
 ## Runtime-conditional construction
