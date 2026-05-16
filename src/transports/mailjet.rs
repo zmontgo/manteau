@@ -14,6 +14,7 @@ use typed_builder::TypedBuilder;
 use crate::{
   message::Message,
   models::{Address, MessageId},
+  templating::attributes::Url,
   transport::{Receipt, Transport, TransportFailure},
 };
 
@@ -40,8 +41,8 @@ pub struct MailjetTransport {
   api_key:    String,
   #[builder(setter(into))]
   api_secret: String,
-  #[builder(default = "https://api.mailjet.com".to_string(), setter(into))]
-  base_url:   String,
+  #[builder(default = Url::try_parse("https://api.mailjet.com").expect("hardcoded URL is valid"))]
+  base_url:   Url,
   /// Tunable defaults — timeout, etc. Override individual fields via
   /// [`MailjetConfig::builder`] before passing in.
   #[builder(default)]
@@ -204,7 +205,7 @@ impl Transport for MailjetTransport {
   type Error = MailjetError;
   type Receipt = MailjetReceipt;
 
-  #[tracing::instrument(skip_all, fields(base_url = %self.base_url))]
+  #[tracing::instrument(skip_all, fields(base_url = %self.base_url.as_str()))]
   async fn send(
     &self,
     message: &Message,
@@ -225,7 +226,7 @@ impl Transport for MailjetTransport {
       }],
     };
 
-    let url = format!("{}/v3.1/send", self.base_url);
+    let url = format!("{}/v3.1/send", self.base_url.as_str());
     let resp = self
       .client
       .post(&url)

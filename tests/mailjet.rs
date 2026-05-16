@@ -1,7 +1,8 @@
 //! Integration test for `MailjetTransport` against a wiremock-backed fake of
 //! the Mailjet `/v3.1/send` endpoint.
-
-#![cfg(feature = "mailjet")]
+//!
+//! Gated via `required-features = ["mailjet"]` in `Cargo.toml`, so this
+//! whole test binary is skipped without the feature.
 
 use manteau::{
   Address, MailjetTransport, Message, Transport,
@@ -50,7 +51,7 @@ fn transport(server_uri: &str) -> MailjetTransport {
   MailjetTransport::builder()
     .api_key("test-key")
     .api_secret("test-secret")
-    .base_url(server_uri.to_string())
+    .base_url(server_uri.parse().expect("wiremock URL"))
     .build()
 }
 
