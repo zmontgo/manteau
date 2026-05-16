@@ -89,6 +89,28 @@ async fn success_returns_message_ids() {
 }
 
 #[tokio::test]
+async fn string_message_id_unquoted() {
+  // Edge case: some Mailjet response paths return MessageID as a JSON string
+  // instead of a number. The id must come back without surrounding quotes.
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(path("/v3.1/send"))
+    .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+        "Messages": [{
+            "To": [{"MessageID": "abc-123"}]
+        }]
+    })))
+    .mount(&server)
+    .await;
+
+  let receipt = transport(&server.uri())
+    .send(&make_message())
+    .await
+    .unwrap();
+  assert_eq!(receipt.ids[0].as_str(), "abc-123");
+}
+
+#[tokio::test]
 async fn auth_failure_is_classified() {
   let server = MockServer::start().await;
   Mock::given(method("POST"))

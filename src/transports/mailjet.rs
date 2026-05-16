@@ -236,7 +236,10 @@ impl Transport for MailjetTransport {
           .filter_map(|to| to.as_array())
           .flatten()
           .filter_map(|t| t.get("MessageID"))
-          .map(|id| MessageId::new(id.to_string()))
+          .map(|id| match id {
+            serde_json::Value::String(s) => MessageId::new(s.clone()),
+            other => MessageId::new(other.to_string()),
+          })
           .collect()
       })
       .unwrap_or_default();
