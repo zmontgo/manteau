@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// `mj-text` — paragraph or run of styled text.
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Text {
   #[builder(setter(into))]

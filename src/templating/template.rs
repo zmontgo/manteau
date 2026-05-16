@@ -14,6 +14,7 @@ use crate::{
 ///
 /// [`Message`]: crate::message::Message
 /// [`Message::content`]: crate::message::Message
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Template {
   pub body:         Body,

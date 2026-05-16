@@ -20,6 +20,7 @@ use crate::{
 /// Tunable defaults for [`MailjetTransport`]. Construct via
 /// [`MailjetConfig::builder`] to override only the fields you care about;
 /// everything else falls back to manteau's defaults.
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct MailjetConfig {
   /// Per-request total timeout (DNS + connect + TLS + send + receive).
@@ -52,6 +53,7 @@ pub struct MailjetTransport {
   client:     reqwest::Client,
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct MailjetReceipt {
   pub ids: Vec<MessageId>,
@@ -81,6 +83,7 @@ impl MailjetError {
   pub fn kind(&self) -> &MailjetErrorKind { &self.kind }
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum MailjetErrorKind {
   /// Network-level failure (DNS, connection refused, TLS, timeout).

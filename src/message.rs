@@ -10,6 +10,7 @@ use crate::{
 };
 
 /// An email: envelope (from/to/cc/bcc/subject) plus a renderable [`Template`].
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Message {
   pub from:    Address,

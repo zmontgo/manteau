@@ -14,6 +14,7 @@ const DEFAULT_WRAP_WIDTH: usize = 80;
 
 /// The product of rendering a [`Template`]: the HTML body and a plaintext
 /// alternative for the `multipart/alternative` payload most providers expect.
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Rendered {
   pub html: String,

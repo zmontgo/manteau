@@ -25,6 +25,7 @@ pub struct MockTransport {
   sent: Mutex<Vec<Message>>,
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct MockReceipt {
   pub ids: Vec<MessageId>,

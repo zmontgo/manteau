@@ -10,6 +10,7 @@
 /// Closed set, named for the failure source within the render pipeline.
 /// All variants are pure tags — incident details (input that failed, mrml
 /// position, html2text context) live in the `source` chain.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum RenderErrorKind {
   /// `mrml::parse` rejected the MJML we generated. Indicates a bug in

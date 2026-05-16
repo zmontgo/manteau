@@ -109,6 +109,7 @@ impl AsRef<str> for EmailAddress {
 ///   .build();
 /// # Ok::<(), manteau::EmailAddressError>(())
 /// ```
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Address {
   pub email: EmailAddress,

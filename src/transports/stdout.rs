@@ -21,6 +21,7 @@ pub struct StdoutTransport {
   verbose: bool,
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct StdoutReceipt {
   pub ids: Vec<MessageId>,

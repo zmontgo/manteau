@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// `mj-button` — clickable button with required destination URL.
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Button {
   #[builder(setter(into))]

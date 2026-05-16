@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// `mj-image` — embedded image with required source URL.
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Image {
   pub src:   Url,

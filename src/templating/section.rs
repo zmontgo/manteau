@@ -12,6 +12,7 @@ use crate::{
 /// `mj-section` — horizontal row of [`Column`]s in a [`Body`].
 ///
 /// [`Body`]: crate::templating::body::Body
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Section {
   #[builder(default)]

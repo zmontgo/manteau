@@ -10,6 +10,7 @@ use crate::{
 };
 
 /// `mj-body` — top-level container of [`Section`]s.
+#[non_exhaustive]
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Body {
   #[builder(default)]
