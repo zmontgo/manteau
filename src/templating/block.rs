@@ -27,8 +27,20 @@ impl Block {
   /// Wrap any [`Element`] into a [`Block`]. Convenience for the
   /// consumer-extension path:
   ///
-  /// ```ignore
-  /// let block = Block::custom(my_element);
+  /// ```
+  /// use manteau::render::MjmlWriter;
+  /// use manteau::templating::{Block, Element};
+  ///
+  /// #[derive(Debug)]
+  /// struct MyDivider;
+  ///
+  /// impl Element for MyDivider {
+  ///     fn write_mjml(&self, w: &mut MjmlWriter) {
+  ///         w.open("mj-divider").close_self();
+  ///     }
+  /// }
+  ///
+  /// let _block = Block::custom(MyDivider);
   /// ```
   pub fn custom<E: Element + 'static>(element: E) -> Self {
     Self::Custom(Arc::new(element))

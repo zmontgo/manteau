@@ -10,10 +10,7 @@ use validator::ValidateEmail;
 
 /// A syntactically valid email address, validated at construction.
 ///
-/// Validation follows the HTML5 spec (what `<input type="email">` accepts) via
-/// the `validator` crate — chosen over strict RFC 5322 because email providers
-/// in practice accept the HTML5 set, not the RFC superset. Quoted local parts
-/// and IP-literal hosts are rejected here even though they are RFC-valid.
+/// Validation follows the HTML5 spec (what `<input type="email">` accepts).
 ///
 /// Input is trimmed of surrounding whitespace before validation. The domain
 /// component is lower-cased on construction so that addresses differing only
