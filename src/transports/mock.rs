@@ -53,6 +53,7 @@ impl Transport for MockTransport {
   type Error = RenderError;
   type Receipt = MockReceipt;
 
+  #[tracing::instrument(skip_all, fields(subject = %message.subject))]
   async fn send(
     &self,
     message: &Message,

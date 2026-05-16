@@ -24,6 +24,7 @@ pub struct Rendered {
 ///
 /// Walks the element tree to produce an MJML string, then runs it through
 /// `mrml` to produce the final HTML.
+#[tracing::instrument(skip_all)]
 pub fn render_html(template: &Template) -> Result<String, RenderError> {
   let mut writer = MjmlWriter::new();
   template.write_mjml(&mut writer);
@@ -40,6 +41,7 @@ pub fn render_html(template: &Template) -> Result<String, RenderError> {
 }
 
 /// Render HTML to plaintext via `html2text` at the default wrap width.
+#[tracing::instrument(skip_all, fields(html_len = html.len()))]
 pub fn render_plaintext(html: &str) -> Result<String, RenderError> {
   html2text::from_read(html.as_bytes(), DEFAULT_WRAP_WIDTH)
     .map_err(|e| RenderErrorKind::Plaintext.err(e))

@@ -34,6 +34,7 @@ impl Message {
   ///
   /// If [`Message::text`] is `Some`, that value is used as the plaintext
   /// alternative verbatim; otherwise plaintext is derived from the HTML.
+  #[tracing::instrument(skip_all, fields(subject = %self.subject))]
   pub fn render(&self) -> Result<Rendered, RenderError> {
     let html = render_html(&self.content)?;
     let text = match &self.text {

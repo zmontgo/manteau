@@ -33,6 +33,7 @@ impl Transport for StdoutTransport {
   type Error = RenderError;
   type Receipt = StdoutReceipt;
 
+  #[tracing::instrument(skip_all, fields(subject = %message.subject))]
   async fn send(
     &self,
     message: &Message,
