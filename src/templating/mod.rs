@@ -5,6 +5,22 @@
 //! defines the data only.
 
 pub mod attributes;
+pub mod block;
+pub mod body;
+pub mod button;
+pub mod column;
 pub mod element;
+pub mod image;
+pub mod section;
+pub mod template;
+pub mod text;
 
+pub use block::Block;
+pub use body::Body;
+pub use button::Button;
+pub use column::Column;
 pub use element::Element;
+pub use image::Image;
+pub use section::Section;
+pub use template::Template;
+pub use text::Text;
