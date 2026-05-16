@@ -4,7 +4,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use async_trait::async_trait;
-use typed_builder::TypedBuilder;
 
 use crate::{
   message::Message,
@@ -13,11 +12,8 @@ use crate::{
   transport::{Receipt, Transport},
 };
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, Default)]
 pub struct StdoutTransport {
-  /// When true, prints the full rendered HTML. When false (default),
-  /// prints only the first 280 characters as a preview.
-  #[builder(default)]
   verbose: bool,
 }
 
@@ -29,6 +25,16 @@ pub struct StdoutReceipt {
 
 impl Receipt for StdoutReceipt {
   fn ids(&self) -> &[MessageId] { &self.ids }
+}
+
+impl StdoutTransport {
+  pub fn new() -> Self { Self::default() }
+
+  /// When true, prints the full rendered HTML. Default false (preview only).
+  pub fn verbose(mut self, verbose: bool) -> Self {
+    self.verbose = verbose;
+    self
+  }
 }
 
 static STDOUT_COUNTER: AtomicU64 = AtomicU64::new(0);

@@ -30,11 +30,8 @@ fn make_message() -> Message {
 }
 
 fn transport(server_uri: &str) -> MailjetTransport {
-  MailjetTransport::builder()
-    .api_key("test-key")
-    .api_secret("test-secret")
+  MailjetTransport::new("test-key", "test-secret")
     .base_url(server_uri.parse().expect("wiremock URL"))
-    .build()
 }
 
 #[tokio::test]

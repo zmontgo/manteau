@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use serde::Serialize;
-use typed_builder::TypedBuilder;
 
 use crate::{
   message::Message,
@@ -19,39 +18,72 @@ use crate::{
 };
 
 /// Tunable defaults for [`MailjetTransport`]. Construct via
-/// [`MailjetConfig::builder`] to override only the fields you care about;
-/// everything else falls back to manteau's defaults.
+/// [`MailjetConfig::new`] and chain setters to override individual fields.
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone)]
 pub struct MailjetConfig {
   /// Per-request total timeout (DNS + connect + TLS + send + receive).
-  /// Default: 30 seconds. Mailjet's API is usually sub-second; 30s gives
-  /// room for slow networks without hanging the caller indefinitely.
-  #[builder(default = Duration::from_secs(30))]
   pub timeout: Duration,
 }
 
-impl Default for MailjetConfig {
-  fn default() -> Self { Self::builder().build() }
+impl MailjetConfig {
+  pub fn new() -> Self {
+    Self {
+      timeout: Duration::from_secs(30),
+    }
+  }
+
+  /// Override the per-request timeout. Default 30 seconds.
+  pub fn timeout(mut self, timeout: Duration) -> Self {
+    self.timeout = timeout;
+    self
+  }
 }
 
-#[derive(Debug, Clone, TypedBuilder)]
+impl Default for MailjetConfig {
+  fn default() -> Self { Self::new() }
+}
+
+#[derive(Debug, Clone)]
 pub struct MailjetTransport {
-  #[builder(setter(into))]
   api_key:    String,
-  #[builder(setter(into))]
   api_secret: String,
-  #[builder(default = Url::try_parse("https://api.mailjet.com").expect("hardcoded URL is valid"))]
   base_url:   Url,
-  /// Tunable defaults — timeout, etc. Override individual fields via
-  /// [`MailjetConfig::builder`] before passing in.
-  #[builder(default)]
   config:     MailjetConfig,
-  /// Reqwest client used for the API call. Defaults to a fresh client per
-  /// transport; reuse a single transport instance to reuse the underlying
-  /// connection pool.
-  #[builder(default)]
   client:     reqwest::Client,
+}
+
+impl MailjetTransport {
+  pub fn new(
+    api_key: impl Into<String>,
+    api_secret: impl Into<String>,
+  ) -> Self {
+    Self {
+      api_key: api_key.into(),
+      api_secret: api_secret.into(),
+      base_url: Url::try_parse("https://api.mailjet.com")
+        .expect("hardcoded URL is valid"),
+      config: MailjetConfig::default(),
+      client: reqwest::Client::default(),
+    }
+  }
+
+  pub fn base_url(mut self, base_url: Url) -> Self {
+    self.base_url = base_url;
+    self
+  }
+
+  pub fn config(mut self, config: MailjetConfig) -> Self {
+    self.config = config;
+    self
+  }
+
+  /// Override the reqwest client (for shared connection pools across many
+  /// transports, custom middleware, etc.).
+  pub fn client(mut self, client: reqwest::Client) -> Self {
+    self.client = client;
+    self
+  }
 }
 
 #[non_exhaustive]
@@ -210,9 +242,8 @@ impl Transport for MailjetTransport {
     &self,
     message: &Message,
   ) -> Result<MailjetReceipt, MailjetError> {
-    let rendered = message
-      .render()
-      .map_err(|e| MailjetErrorKind::Render.err(e))?;
+    let rendered =
+      message.render().map_err(|e| MailjetErrorKind::Render.err(e))?;
 
     let payload = Payload {
       messages: vec![MailjetMessage {
@@ -253,10 +284,8 @@ impl Transport for MailjetTransport {
       return Err(kind.err(rejection));
     }
 
-    let raw: serde_json::Value = resp
-      .json()
-      .await
-      .map_err(|e| MailjetErrorKind::Decode.err(e))?;
+    let raw: serde_json::Value =
+      resp.json().await.map_err(|e| MailjetErrorKind::Decode.err(e))?;
 
     let ids = raw
       .get("Messages")
