@@ -59,7 +59,7 @@ fn is_valid_hex(s: &str) -> bool {
 }
 
 fn is_valid_name(s: &str) -> bool {
-  !s.is_empty() && s.chars().all(|c| c.is_ascii_alphabetic() || c == '-')
+  !s.is_empty() && s.chars().all(|c| c.is_ascii_alphabetic())
 }
 
 impl FromStr for Color {
@@ -174,6 +174,18 @@ impl FromStr for Url {
   fn from_str(s: &str) -> Result<Self, Self::Err> { Self::try_parse(s) }
 }
 
+impl TryFrom<&str> for Url {
+  type Error = UrlError;
+
+  fn try_from(s: &str) -> Result<Self, Self::Error> { s.parse() }
+}
+
+impl TryFrom<String> for Url {
+  type Error = UrlError;
+
+  fn try_from(s: String) -> Result<Self, Self::Error> { s.parse() }
+}
+
 impl std::fmt::Display for Url {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str(&self.0)
@@ -269,6 +281,16 @@ mod tests {
     assert!(Color::try_parse("#zz").is_err());
     assert!(Color::try_parse("#12345").is_err()); // not a valid hex length
     assert!(Color::try_parse("").is_err());
+    // Hyphens are not part of any real CSS named color.
+    assert!(Color::try_parse("blue-grey").is_err());
+  }
+
+  #[test]
+  fn url_try_from_str_and_string() {
+    let from_str: Url = "https://example.com".try_into().unwrap();
+    let from_string: Url =
+      String::from("https://example.com").try_into().unwrap();
+    assert_eq!(from_str, from_string);
   }
 
   #[test]

@@ -14,9 +14,20 @@ use validator::ValidateEmail;
 /// the `validator` crate — chosen over strict RFC 5322 because email providers
 /// in practice accept the HTML5 set, not the RFC superset. Quoted local parts
 /// and IP-literal hosts are rejected here even though they are RFC-valid.
+///
+/// Input is trimmed of surrounding whitespace before validation. The domain
+/// component is lower-cased on construction so that addresses differing only
+/// in domain case (`User@Example.com` vs `User@example.com`) compare and hash
+/// equal. The local part is preserved as-is (it is technically case-sensitive
+/// per RFC, even though most providers treat it as case-insensitive).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmailAddress(String);
 
+/// Failure produced by [`EmailAddress`] parsing.
+///
+/// The failing input is preserved for developer-side debugging via
+/// [`EmailAddressError::input`]. Email addresses are PII — do not surface
+/// this error's `Display` text directly to end users or to public logs.
 #[derive(Debug, thiserror::Error)]
 #[error("invalid email address: {input}")]
 pub struct EmailAddressError {
@@ -29,19 +40,36 @@ impl EmailAddressError {
 
 impl EmailAddress {
   pub fn as_str(&self) -> &str { &self.0 }
+
+  /// The local part — everything before `@`.
+  pub fn local_part(&self) -> &str {
+    // `validate_email` enforces exactly one `@`, so split_once cannot return
+    // None for a successfully constructed EmailAddress.
+    self.0.split_once('@').map(|(l, _)| l).unwrap_or(&self.0)
+  }
+
+  /// The domain — everything after `@`, lower-cased.
+  pub fn domain(&self) -> &str {
+    self.0.split_once('@').map(|(_, d)| d).unwrap_or("")
+  }
 }
 
 impl FromStr for EmailAddress {
   type Err = EmailAddressError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    if s.validate_email() {
-      Ok(Self(s.to_string()))
-    } else {
-      Err(EmailAddressError {
+    let s = s.trim();
+    if !s.validate_email() {
+      return Err(EmailAddressError {
         input: s.to_string(),
-      })
+      });
     }
+    // Domain part lower-cased; local part preserved.
+    let normalized = match s.split_once('@') {
+      Some((local, domain)) => format!("{}@{}", local, domain.to_lowercase()),
+      None => s.to_string(), // unreachable: validate_email enforces '@'
+    };
+    Ok(Self(normalized))
   }
 }
 
@@ -151,5 +179,27 @@ mod tests {
     let id = MessageId::new("abc123");
     assert_eq!(id.to_string(), "abc123");
     assert_eq!(id.as_str(), "abc123");
+  }
+
+  #[test]
+  fn email_trims_whitespace() {
+    let e: EmailAddress = "  hello@example.com  ".parse().unwrap();
+    assert_eq!(e.as_str(), "hello@example.com");
+  }
+
+  #[test]
+  fn email_lowercases_domain() {
+    let e: EmailAddress = "Hello@Example.COM".parse().unwrap();
+    assert_eq!(e.as_str(), "Hello@example.com");
+    // Local part preserved.
+    assert_eq!(e.local_part(), "Hello");
+    assert_eq!(e.domain(), "example.com");
+  }
+
+  #[test]
+  fn email_case_differing_domains_are_equal() {
+    let a: EmailAddress = "a@Example.com".parse().unwrap();
+    let b: EmailAddress = "a@example.COM".parse().unwrap();
+    assert_eq!(a, b);
   }
 }
