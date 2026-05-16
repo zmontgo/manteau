@@ -7,5 +7,5 @@ pub mod render;
 pub mod writer;
 
 pub use error::{RenderError, RenderErrorKind};
-pub use render::{render_html, render_plaintext, Rendered};
+pub use render::{Rendered, render_html, render_plaintext};
 pub use writer::{ElementWriter, MjmlWriter};

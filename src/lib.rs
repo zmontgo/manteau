@@ -41,8 +41,8 @@
 //!
 //! # Feature flags
 //!
-//! - `mailjet` — `MailjetTransport`, posts to Mailjet's v3.1 send API.
-//!   Implies `tls-rustls`.
+//! - `mailjet` — `MailjetTransport`, posts to Mailjet's v3.1 send API. Implies
+//!   `tls-rustls`.
 //! - `stdout` — `StdoutTransport`, prints to stdout. For local development.
 //! - `tls-rustls` / `tls-native` — selects the TLS backend for the HTTP
 //!   transports. `tls-rustls` is the default chosen by `mailjet`.
@@ -58,10 +58,10 @@ pub use message::Message;
 pub use models::{Address, EmailAddress, EmailAddressError, MessageId};
 pub use render::{RenderError, RenderErrorKind, Rendered};
 pub use transport::{Transport, TransportFailure};
-pub use transports::mock::{MockReceipt, MockTransport};
-
 #[cfg(feature = "mailjet")]
-pub use transports::mailjet::{MailjetError, MailjetErrorKind, MailjetReceipt, MailjetTransport};
-
+pub use transports::mailjet::{
+  MailjetError, MailjetErrorKind, MailjetReceipt, MailjetTransport,
+};
+pub use transports::mock::{MockReceipt, MockTransport};
 #[cfg(feature = "stdout")]
 pub use transports::stdout::{StdoutReceipt, StdoutTransport};

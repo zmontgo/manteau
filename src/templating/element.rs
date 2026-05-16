@@ -12,6 +12,6 @@ use crate::render::MjmlWriter;
 ///
 /// [`Block`]: crate::templating::block::Block
 pub trait Element: std::fmt::Debug + Send + Sync {
-    /// Write this element's MJML representation into `w`.
-    fn write_mjml(&self, w: &mut MjmlWriter);
+  /// Write this element's MJML representation into `w`.
+  fn write_mjml(&self, w: &mut MjmlWriter);
 }

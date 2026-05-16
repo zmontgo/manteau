@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use crate::render::MjmlWriter;
-use crate::templating::button::Button;
-use crate::templating::element::Element;
-use crate::templating::image::Image;
-use crate::templating::text::Text;
+use crate::{
+  render::MjmlWriter,
+  templating::{button::Button, element::Element, image::Image, text::Text},
+};
 
 /// Anything that can live inside a [`Column`] — a leaf MJML element.
 ///
@@ -15,52 +14,46 @@ use crate::templating::text::Text;
 /// [`Column`]: crate::templating::column::Column
 #[derive(Debug, Clone)]
 pub enum Block {
-    Text(Text),
-    Button(Button),
-    Image(Image),
-    /// A consumer-defined element. Held by [`Arc`] so [`Block`] (and the
-    /// containers built on it) can be `Clone` without pulling in a
-    /// dyn-cloning crate.
-    Custom(Arc<dyn Element>),
+  Text(Text),
+  Button(Button),
+  Image(Image),
+  /// A consumer-defined element. Held by [`Arc`] so [`Block`] (and the
+  /// containers built on it) can be `Clone` without pulling in a
+  /// dyn-cloning crate.
+  Custom(Arc<dyn Element>),
 }
 
 impl Block {
-    /// Wrap any [`Element`] into a [`Block`]. Convenience for the
-    /// consumer-extension path:
-    ///
-    /// ```ignore
-    /// let block = Block::custom(my_element);
-    /// ```
-    pub fn custom<E: Element + 'static>(element: E) -> Self {
-        Self::Custom(Arc::new(element))
-    }
+  /// Wrap any [`Element`] into a [`Block`]. Convenience for the
+  /// consumer-extension path:
+  ///
+  /// ```ignore
+  /// let block = Block::custom(my_element);
+  /// ```
+  pub fn custom<E: Element + 'static>(element: E) -> Self {
+    Self::Custom(Arc::new(element))
+  }
 }
 
 impl Element for Block {
-    fn write_mjml(&self, w: &mut MjmlWriter) {
-        match self {
-            Self::Text(t) => t.write_mjml(w),
-            Self::Button(b) => b.write_mjml(w),
-            Self::Image(i) => i.write_mjml(w),
-            Self::Custom(c) => c.write_mjml(w),
-        }
+  fn write_mjml(&self, w: &mut MjmlWriter) {
+    match self {
+      Self::Text(t) => t.write_mjml(w),
+      Self::Button(b) => b.write_mjml(w),
+      Self::Image(i) => i.write_mjml(w),
+      Self::Custom(c) => c.write_mjml(w),
     }
+  }
 }
 
 impl From<Text> for Block {
-    fn from(t: Text) -> Self {
-        Self::Text(t)
-    }
+  fn from(t: Text) -> Self { Self::Text(t) }
 }
 
 impl From<Button> for Block {
-    fn from(b: Button) -> Self {
-        Self::Button(b)
-    }
+  fn from(b: Button) -> Self { Self::Button(b) }
 }
 
 impl From<Image> for Block {
-    fn from(i: Image) -> Self {
-        Self::Image(i)
-    }
+  fn from(i: Image) -> Self { Self::Image(i) }
 }
