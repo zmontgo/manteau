@@ -6,5 +6,8 @@
 
 pub mod mock;
 
+#[cfg(feature = "mailjet")]
+pub mod mailjet;
+
 #[cfg(feature = "stdout")]
 pub mod stdout;
