@@ -19,10 +19,10 @@ pub struct Button {
 impl Button {
   pub fn new(content: impl Into<String>, href: Url) -> Self {
     Self {
-      content:          content.into(),
+      content: content.into(),
       href,
       background_color: None,
-      color:            None,
+      color: None,
     }
   }
 

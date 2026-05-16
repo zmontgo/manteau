@@ -30,7 +30,7 @@ impl Column {
   /// let mut col = Column::new().push(Text::new("Welcome!"));
   /// # let coupon_eligible = true;
   /// if coupon_eligible {
-  ///     col = col.push(Text::new("Here's a coupon"));
+  ///   col = col.push(Text::new("Here's a coupon"));
   /// }
   /// ```
   pub fn push(mut self, child: impl Into<Block>) -> Self {

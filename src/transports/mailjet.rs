@@ -59,12 +59,12 @@ impl MailjetTransport {
     api_secret: impl Into<String>,
   ) -> Self {
     Self {
-      api_key: api_key.into(),
+      api_key:    api_key.into(),
       api_secret: api_secret.into(),
-      base_url: Url::try_parse("https://api.mailjet.com")
+      base_url:   Url::try_parse("https://api.mailjet.com")
         .expect("hardcoded URL is valid"),
-      config: MailjetConfig::default(),
-      client: reqwest::Client::default(),
+      config:     MailjetConfig::default(),
+      client:     reqwest::Client::default(),
     }
   }
 
@@ -242,8 +242,9 @@ impl Transport for MailjetTransport {
     &self,
     message: &Message,
   ) -> Result<MailjetReceipt, MailjetError> {
-    let rendered =
-      message.render().map_err(|e| MailjetErrorKind::Render.err(e))?;
+    let rendered = message
+      .render()
+      .map_err(|e| MailjetErrorKind::Render.err(e))?;
 
     let payload = Payload {
       messages: vec![MailjetMessage {
@@ -284,8 +285,10 @@ impl Transport for MailjetTransport {
       return Err(kind.err(rejection));
     }
 
-    let raw: serde_json::Value =
-      resp.json().await.map_err(|e| MailjetErrorKind::Decode.err(e))?;
+    let raw: serde_json::Value = resp
+      .json()
+      .await
+      .map_err(|e| MailjetErrorKind::Decode.err(e))?;
 
     let ids = raw
       .get("Messages")

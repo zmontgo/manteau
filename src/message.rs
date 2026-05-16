@@ -18,7 +18,7 @@ use crate::{
 /// let from = Address::new("hello@example.com".parse()?);
 /// let to = vec![Address::new("you@example.com".parse()?)];
 /// let msg = Message::new(from, to, "Hi", Template::new(Body::new()))
-///     .cc(vec![Address::new("loop@example.com".parse()?)]);
+///   .cc(vec![Address::new("loop@example.com".parse()?)]);
 /// # Ok::<(), manteau::EmailAddressError>(())
 /// ```
 #[non_exhaustive]

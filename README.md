@@ -18,33 +18,44 @@ use manteau::{Address, MailjetTransport, Message, Transport};
 use manteau::templating::{Body, Column, Section, Template, Text};
 
 # async fn run() -> Result<(), Box<dyn std::error::Error>> {
-  let template = Template::builder()
-    .body(Body::builder()
-      .sections(vec![Section::builder()
-        .columns(vec![Column::builder()
-          .children(vec![Text::builder()
-            .content("Hello, world!")
-            .build()
-            .into()])
-          .build()])
-        .build()])
-      .build())
-    .build();
-  
-  let msg = Message::builder()
-    .from(Address::builder().email("hello@example.com".parse()?).build())
-    .to(vec![Address::builder().email("you@example.com".parse()?).build()])
-    .subject("Hi")
-    .content(template)
-    .build();
-  
-  let transport = MailjetTransport::builder()
-    .api_key(std::env::var("MAILJET_API_KEY")?)
-    .api_secret(std::env::var("MAILJET_API_SECRET")?)
-    .build();
-  
-  transport.send(&msg).await?;
-  # Ok(())
+let template = Template::new(
+  Body::new().push_section(
+    Section::new().push_column(
+      Column::new().push(Text::new("Hello, world!")),
+    ),
+  ),
+);
+
+let msg = Message::new(
+  Address::new("hello@example.com".parse()?),
+  vec![Address::new("you@example.com".parse()?)],
+  "Hi",
+  template,
+);
+
+let transport = MailjetTransport::new(
+  std::env::var("MAILJET_API_KEY")?,
+  std::env::var("MAILJET_API_SECRET")?,
+);
+
+transport.send(&msg).await?;
+# Ok(())
+# }
+```
+
+## Runtime-conditional construction
+
+The `push_*` accumulators let you build a template incrementally. For
+example, tacking on a coupon section if a user qualifies:
+
+```rust
+# use manteau::templating::{Body, Column, Section, Text};
+# let user_coupon_eligible = true;
+# let welcome_section = Section::new();
+# let coupon_section = Section::new();
+let mut body = Body::new().push_section(welcome_section);
+if user_coupon_eligible {
+  body = body.push_section(coupon_section);
 }
 ```
 
@@ -85,7 +96,7 @@ impl TransportFailure for MyError {
   fn is_message_rejected(&self) -> bool { false }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl Transport for MyTransport {
   type Receipt = MyReceipt;
   type Error = MyError;

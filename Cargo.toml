@@ -18,14 +18,13 @@ tls-rustls = ["reqwest/rustls", "reqwest/webpki-roots"]
 tls-native = ["reqwest/native-tls"]
 
 [dependencies]
-mrml          = "6"
-typed-builder = "0.23"
-serde         = { version = "1", features = ["derive"] }
-async-trait   = "0.1"
-thiserror     = "2"
-tracing       = "0.1"
-html2text     = "0.16"
-validator     = "0.20"
+mrml        = "6"
+serde       = { version = "1", features = ["derive"] }
+async-trait = "0.1"
+thiserror   = "2"
+tracing     = "0.1"
+html2text   = "0.16"
+validator   = "0.20"
 
 reqwest    = { version = "0.13", features = ["json"], default-features = false, optional = true }
 serde_json = { version = "1", optional = true }

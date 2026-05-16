@@ -64,11 +64,9 @@ impl Visit for FieldVisitor {
 }
 
 fn make_message(subject: &str) -> Message {
-  let template = Template::new(
-    Body::new().push_section(
-      Section::new().push_column(Column::new().push(Text::new("Hi"))),
-    ),
-  );
+  let template = Template::new(Body::new().push_section(
+    Section::new().push_column(Column::new().push(Text::new("Hi"))),
+  ));
 
   Message::new(
     Address::new("from@example.com".parse().unwrap()),

@@ -1,10 +1,10 @@
-//! Manteau — typed builders for MJML emails with pluggable transports.
+//! Manteau — ergonomic, typed APIs for MJML emails with pluggable transports.
 //!
-//! Compose an MJML email through typed builders, render it to HTML and
-//! plaintext, and ship it through any [`Transport`] (Mailjet, stdout, mock,
-//! or your own). Validation lives on the type boundary — invalid email
-//! addresses, malformed colors, out-of-range percentages cannot exist as
-//! constructed values.
+//! Compose an MJML email through `::new` constructors and chained setters,
+//! render it to HTML and plaintext, and ship it through any [`Transport`]
+//! (Mailjet, stdout, mock, or your own). Validation lives on the type
+//! boundary — invalid email addresses, malformed colors, out-of-range
+//! percentages cannot exist as constructed values.
 //!
 //! # Example
 //!
@@ -13,25 +13,16 @@
 //! # use manteau::templating::{Body, Column, Section, Template, Text};
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
 //! # rt.block_on(async {
-//! let template = Template::builder()
-//!     .body(Body::builder()
-//!         .sections(vec![Section::builder()
-//!             .columns(vec![Column::builder()
-//!                 .children(vec![Text::builder()
-//!                     .content("Hello, world!")
-//!                     .build()
-//!                     .into()])
-//!                 .build()])
-//!             .build()])
-//!         .build())
-//!     .build();
+//! let template = Template::new(Body::new().push_section(
+//!   Section::new().push_column(Column::new().push(Text::new("Hello, world!"))),
+//! ));
 //!
-//! let msg = Message::builder()
-//!     .from(Address::builder().email("hello@example.com".parse().unwrap()).build())
-//!     .to(vec![Address::builder().email("you@example.com".parse().unwrap()).build()])
-//!     .subject("Hi")
-//!     .content(template)
-//!     .build();
+//! let msg = Message::new(
+//!   Address::new("hello@example.com".parse().unwrap()),
+//!   vec![Address::new("you@example.com".parse().unwrap())],
+//!   "Hi",
+//!   template,
+//! );
 //!
 //! let transport = MockTransport::new();
 //! transport.send(&msg).await.unwrap();

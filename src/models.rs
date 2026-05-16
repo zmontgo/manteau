@@ -107,9 +107,7 @@ pub struct Address {
 }
 
 impl Address {
-  pub fn new(email: EmailAddress) -> Self {
-    Self { email, name: None }
-  }
+  pub fn new(email: EmailAddress) -> Self { Self { email, name: None } }
 
   pub fn name(mut self, name: impl Into<String>) -> Self {
     self.name = Some(name.into());
