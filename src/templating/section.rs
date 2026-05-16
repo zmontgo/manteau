@@ -1,5 +1,3 @@
-use typed_builder::TypedBuilder;
-
 use crate::{
   render::MjmlWriter,
   templating::{
@@ -13,14 +11,36 @@ use crate::{
 ///
 /// [`Body`]: crate::templating::body::Body
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, Default)]
 pub struct Section {
-  #[builder(default)]
   pub columns:          Vec<Column>,
-  #[builder(default, setter(strip_option))]
   pub background_color: Option<Color>,
-  #[builder(default, setter(strip_option, into))]
   pub padding:          Option<Pixels>,
+}
+
+impl Section {
+  pub fn new() -> Self { Self::default() }
+
+  pub fn columns(mut self, columns: Vec<Column>) -> Self {
+    self.columns = columns;
+    self
+  }
+
+  /// Append one column.
+  pub fn push_column(mut self, column: Column) -> Self {
+    self.columns.push(column);
+    self
+  }
+
+  pub fn background_color(mut self, color: Color) -> Self {
+    self.background_color = Some(color);
+    self
+  }
+
+  pub fn padding(mut self, padding: impl Into<Pixels>) -> Self {
+    self.padding = Some(padding.into());
+    self
+  }
 }
 
 impl Element for Section {

@@ -1,5 +1,3 @@
-use typed_builder::TypedBuilder;
-
 use crate::{
   render::MjmlWriter,
   templating::{attributes::Percentage, block::Block, element::Element},
@@ -9,12 +7,41 @@ use crate::{
 ///
 /// [`Section`]: crate::templating::section::Section
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, Default)]
 pub struct Column {
-  #[builder(default)]
   pub children: Vec<Block>,
-  #[builder(default, setter(strip_option))]
   pub width:    Option<Percentage>,
+}
+
+impl Column {
+  pub fn new() -> Self { Self::default() }
+
+  /// Replace the children with a whole new vec — for when you have the
+  /// list upfront.
+  pub fn children(mut self, children: Vec<Block>) -> Self {
+    self.children = children;
+    self
+  }
+
+  /// Append one child. The runtime-modification path:
+  ///
+  /// ```
+  /// # use manteau::templating::{Column, Text};
+  /// let mut col = Column::new().push(Text::new("Welcome!"));
+  /// # let coupon_eligible = true;
+  /// if coupon_eligible {
+  ///     col = col.push(Text::new("Here's a coupon"));
+  /// }
+  /// ```
+  pub fn push(mut self, child: impl Into<Block>) -> Self {
+    self.children.push(child.into());
+    self
+  }
+
+  pub fn width(mut self, width: Percentage) -> Self {
+    self.width = Some(width);
+    self
+  }
 }
 
 impl Element for Column {

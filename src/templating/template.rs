@@ -1,5 +1,3 @@
-use typed_builder::TypedBuilder;
-
 use crate::{
   render::MjmlWriter,
   templating::{body::Body, element::Element},
@@ -15,13 +13,31 @@ use crate::{
 /// [`Message`]: crate::message::Message
 /// [`Message::content`]: crate::message::Message
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone)]
 pub struct Template {
   pub body:         Body,
-  #[builder(default, setter(strip_option, into))]
   pub preview_text: Option<String>,
-  #[builder(default, setter(strip_option, into))]
   pub title:        Option<String>,
+}
+
+impl Template {
+  pub fn new(body: Body) -> Self {
+    Self {
+      body,
+      preview_text: None,
+      title: None,
+    }
+  }
+
+  pub fn preview_text(mut self, text: impl Into<String>) -> Self {
+    self.preview_text = Some(text.into());
+    self
+  }
+
+  pub fn title(mut self, title: impl Into<String>) -> Self {
+    self.title = Some(title.into());
+    self
+  }
 }
 
 impl Element for Template {

@@ -64,21 +64,11 @@ impl Visit for FieldVisitor {
 }
 
 fn make_message(subject: &str) -> Message {
-  let template = Template::builder()
-    .body(
-      Body::builder()
-        .sections(vec![
-          Section::builder()
-            .columns(vec![
-              Column::builder()
-                .children(vec![Text::new("Hi").into()])
-                .build(),
-            ])
-            .build(),
-        ])
-        .build(),
-    )
-    .build();
+  let template = Template::new(
+    Body::new().push_section(
+      Section::new().push_column(Column::new().push(Text::new("Hi"))),
+    ),
+  );
 
   Message::builder()
     .from(

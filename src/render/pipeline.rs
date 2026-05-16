@@ -53,23 +53,12 @@ mod tests {
   use crate::templating::{Body, Column, Section, Template, Text};
 
   fn minimal_template() -> Template {
-    Template::builder()
-      .body(
-        Body::builder()
-          .sections(vec![
-            Section::builder()
-              .columns(vec![
-                Column::builder()
-                  .children(vec![
-                    Text::new("Hello, world!").into(),
-                  ])
-                  .build(),
-              ])
-              .build(),
-          ])
-          .build(),
-      )
-      .build()
+    Template::new(
+      Body::new().push_section(
+        Section::new()
+          .push_column(Column::new().push(Text::new("Hello, world!"))),
+      ),
+    )
   }
 
   #[test]
