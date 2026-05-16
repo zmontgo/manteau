@@ -8,7 +8,7 @@ use crate::templating::element::Element;
 /// `mj-column` — vertical stack of [`Block`]s inside a [`Section`].
 ///
 /// [`Section`]: crate::templating::section::Section
-#[derive(Debug, TypedBuilder)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct Column {
     #[builder(default)]
     pub children: Vec<Block>,

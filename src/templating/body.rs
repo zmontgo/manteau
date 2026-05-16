@@ -6,7 +6,7 @@ use crate::templating::element::Element;
 use crate::templating::section::Section;
 
 /// `mj-body` — top-level container of [`Section`]s.
-#[derive(Debug, TypedBuilder)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct Body {
     #[builder(default)]
     pub sections: Vec<Section>,

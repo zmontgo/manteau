@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::render::MjmlWriter;
 use crate::templating::button::Button;
 use crate::templating::element::Element;
@@ -8,15 +10,30 @@ use crate::templating::text::Text;
 ///
 /// Library-known leaves are first-class variants for ergonomic, compile-time
 /// typed construction. Consumer-defined elements plug in via [`Block::Custom`]
-/// (any type implementing [`Element`]).
+/// (any type implementing [`Element`]) — see [`Block::custom`].
 ///
 /// [`Column`]: crate::templating::column::Column
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Block {
     Text(Text),
     Button(Button),
     Image(Image),
-    Custom(Box<dyn Element>),
+    /// A consumer-defined element. Held by [`Arc`] so [`Block`] (and the
+    /// containers built on it) can be `Clone` without pulling in a
+    /// dyn-cloning crate.
+    Custom(Arc<dyn Element>),
+}
+
+impl Block {
+    /// Wrap any [`Element`] into a [`Block`]. Convenience for the
+    /// consumer-extension path:
+    ///
+    /// ```ignore
+    /// let block = Block::custom(my_element);
+    /// ```
+    pub fn custom<E: Element + 'static>(element: E) -> Self {
+        Self::Custom(Arc::new(element))
+    }
 }
 
 impl Element for Block {

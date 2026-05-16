@@ -13,7 +13,7 @@ use crate::templating::element::Element;
 ///
 /// [`Message`]: crate::message::Message
 /// [`Message::content`]: crate::message::Message
-#[derive(Debug, TypedBuilder)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct Template {
     pub body: Body,
     #[builder(default, setter(strip_option, into))]

@@ -8,7 +8,7 @@ use crate::templating::element::Element;
 /// `mj-section` — horizontal row of [`Column`]s in a [`Body`].
 ///
 /// [`Body`]: crate::templating::body::Body
-#[derive(Debug, TypedBuilder)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct Section {
     #[builder(default)]
     pub columns: Vec<Column>,
