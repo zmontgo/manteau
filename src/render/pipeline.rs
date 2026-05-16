@@ -29,20 +29,20 @@ pub fn render_html(template: &Template) -> Result<String, RenderError> {
   template.write_mjml(&mut writer);
   let mjml = writer.into_string();
 
-  let parsed = mrml::parse(&mjml)
-    .map_err(|e| RenderErrorKind::Parse.err(format!("{e:?}")))?;
+  let parsed =
+    mrml::parse(&mjml).map_err(|e| RenderErrorKind::Parse.err(e))?;
 
   let opts = mrml::prelude::render::RenderOptions::default();
   parsed
     .element
     .render(&opts)
-    .map_err(|e| RenderErrorKind::Render.err(format!("{e:?}")))
+    .map_err(|e| RenderErrorKind::Render.err(e))
 }
 
 /// Render HTML to plaintext via `html2text` at the default wrap width.
 pub fn render_plaintext(html: &str) -> Result<String, RenderError> {
   html2text::from_read(html.as_bytes(), DEFAULT_WRAP_WIDTH)
-    .map_err(|e| RenderErrorKind::Plaintext.err(format!("{e:?}")))
+    .map_err(|e| RenderErrorKind::Plaintext.err(e))
 }
 
 #[cfg(test)]

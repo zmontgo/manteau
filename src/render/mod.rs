@@ -2,10 +2,9 @@
 //! then HTML, then plaintext.
 
 pub mod error;
-#[allow(clippy::module_inception)]
-pub mod render;
+pub mod pipeline;
 pub mod writer;
 
 pub use error::{RenderError, RenderErrorKind};
-pub use render::{Rendered, render_html, render_plaintext};
+pub use pipeline::{Rendered, render_html, render_plaintext};
 pub use writer::{ElementWriter, MjmlWriter};
