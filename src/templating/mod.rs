@@ -5,3 +5,6 @@
 //! defines the data only.
 
 pub mod attributes;
+pub mod element;
+
+pub use element::Element;
