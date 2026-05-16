@@ -126,6 +126,15 @@ impl Element for MyDivider {
 let block = Block::custom(MyDivider);
 ```
 
+## Note about AI
+
+With the use of AI and mostly-AI built applications being a hot-button issue, I want to be transparent.
+
+The first version of this crate was an internal tool I needed built quickly, which I realized may benefit others.
+Thus, it was built almost entirely using AI, and hastily published. Because of this, I do not consider the v0.1.0 release well-tested, and while I rather carefully refined the API I wanted, I default to not considering it necessarily well-built.
+
+I will be hand-revising this in the coming days until a properly vetted 0.2.0 release can be produced. At that point, I would consider it feature-complete. If you see this message, I invite you to contribute. I have a deep love for the craft of software design, and would love to partner with others who do as well.
+
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE).
