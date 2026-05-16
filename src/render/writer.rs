@@ -46,7 +46,8 @@ impl MjmlWriter {
 /// is discarded without a terminal call. As a safety net, `Drop` closes a
 /// forgotten element as self-closing so the buffer never contains a
 /// half-open tag.
-#[must_use = "an opened element must be closed with text(), children(), or close_self() — dropping it produces a self-closing tag"]
+#[must_use = "an opened element must be closed with text(), children(), or \
+              close_self() — dropping it produces a self-closing tag"]
 pub struct ElementWriter<'a> {
   writer: &'a mut MjmlWriter,
   tag:    &'static str,

@@ -31,8 +31,7 @@ pub fn render_html(template: &Template) -> Result<String, RenderError> {
   template.write_mjml(&mut writer);
   let mjml = writer.into_string();
 
-  let parsed =
-    mrml::parse(&mjml).map_err(|e| RenderErrorKind::Parse.err(e))?;
+  let parsed = mrml::parse(&mjml).map_err(|e| RenderErrorKind::Parse.err(e))?;
 
   let opts = mrml::prelude::render::RenderOptions::default();
   parsed
