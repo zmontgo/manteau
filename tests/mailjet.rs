@@ -21,20 +21,12 @@ fn make_message() -> Message {
     ),
   );
 
-  Message::builder()
-    .from(
-      Address::builder()
-        .email("from@example.com".parse().unwrap())
-        .build(),
-    )
-    .to(vec![
-      Address::builder()
-        .email("to@example.com".parse().unwrap())
-        .build(),
-    ])
-    .subject("Hello")
-    .content(template)
-    .build()
+  Message::new(
+    Address::new("from@example.com".parse().unwrap()),
+    vec![Address::new("to@example.com".parse().unwrap())],
+    "Hello",
+    template,
+  )
 }
 
 fn transport(server_uri: &str) -> MailjetTransport {

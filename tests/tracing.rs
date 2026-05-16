@@ -70,20 +70,12 @@ fn make_message(subject: &str) -> Message {
     ),
   );
 
-  Message::builder()
-    .from(
-      Address::builder()
-        .email("from@example.com".parse().unwrap())
-        .build(),
-    )
-    .to(vec![
-      Address::builder()
-        .email("to@example.com".parse().unwrap())
-        .build(),
-    ])
-    .subject(subject)
-    .content(template)
-    .build()
+  Message::new(
+    Address::new("from@example.com".parse().unwrap()),
+    vec![Address::new("to@example.com".parse().unwrap())],
+    subject,
+    template,
+  )
 }
 
 #[test]

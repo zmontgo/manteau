@@ -1,8 +1,6 @@
 //! Top-level [`Message`] type — the value that flows through
 //! [`Transport::send`](crate::transport::Transport::send).
 
-use typed_builder::TypedBuilder;
-
 use crate::{
   models::Address,
   render::{RenderError, Rendered, render_html, render_plaintext},
@@ -10,26 +8,78 @@ use crate::{
 };
 
 /// An email: envelope (from/to/cc/bcc/subject) plus a renderable [`Template`].
+///
+/// Required envelope fields go through [`Message::new`]; optional `cc`,
+/// `bcc`, and `text` override are chained setters.
+///
+/// ```
+/// # use manteau::{Address, Message};
+/// # use manteau::templating::{Body, Template};
+/// let from = Address::new("hello@example.com".parse()?);
+/// let to = vec![Address::new("you@example.com".parse()?)];
+/// let msg = Message::new(from, to, "Hi", Template::new(Body::new()))
+///     .cc(vec![Address::new("loop@example.com".parse()?)]);
+/// # Ok::<(), manteau::EmailAddressError>(())
+/// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone)]
 pub struct Message {
   pub from:    Address,
-  #[builder(setter(into))]
   pub to:      Vec<Address>,
-  #[builder(default, setter(into))]
   pub cc:      Vec<Address>,
-  #[builder(default, setter(into))]
   pub bcc:     Vec<Address>,
-  #[builder(setter(into))]
   pub subject: String,
   pub content: Template,
   /// Override the plaintext alternative. When `None`, plaintext is derived
   /// from the rendered HTML via `html2text`.
-  #[builder(default, setter(strip_option, into))]
   pub text:    Option<String>,
 }
 
 impl Message {
+  pub fn new(
+    from: Address,
+    to: Vec<Address>,
+    subject: impl Into<String>,
+    content: Template,
+  ) -> Self {
+    Self {
+      from,
+      to,
+      cc: Vec::new(),
+      bcc: Vec::new(),
+      subject: subject.into(),
+      content,
+      text: None,
+    }
+  }
+
+  pub fn cc(mut self, cc: Vec<Address>) -> Self {
+    self.cc = cc;
+    self
+  }
+
+  pub fn push_cc(mut self, addr: Address) -> Self {
+    self.cc.push(addr);
+    self
+  }
+
+  pub fn bcc(mut self, bcc: Vec<Address>) -> Self {
+    self.bcc = bcc;
+    self
+  }
+
+  pub fn push_bcc(mut self, addr: Address) -> Self {
+    self.bcc.push(addr);
+    self
+  }
+
+  /// Override the plaintext alternative. Without this, plaintext is derived
+  /// from the rendered HTML via `html2text`.
+  pub fn text(mut self, text: impl Into<String>) -> Self {
+    self.text = Some(text.into());
+    self
+  }
+
   /// Render the content to HTML and plaintext. Single source of truth for
   /// what gets handed to a transport.
   ///

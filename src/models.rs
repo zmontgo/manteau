@@ -5,7 +5,6 @@
 
 use std::str::FromStr;
 
-use typed_builder::TypedBuilder;
 use validator::ValidateEmail;
 
 /// A syntactically valid email address, validated at construction.
@@ -95,23 +94,27 @@ impl AsRef<str> for EmailAddress {
 /// A `From`/`To`/`Cc`/`Bcc` participant — a validated email plus an optional
 /// display name.
 ///
-/// `email` is taken as a constructed `EmailAddress`. Validation lives on the
-/// newtype; the builder just accepts an already-valid value:
-///
 /// ```
 /// # use manteau::Address;
-/// let a = Address::builder()
-///   .email("hello@example.com".parse()?)
-///   .name("Hello")
-///   .build();
+/// let a = Address::new("hello@example.com".parse()?).name("Hello");
 /// # Ok::<(), manteau::EmailAddressError>(())
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone)]
 pub struct Address {
   pub email: EmailAddress,
-  #[builder(default, setter(strip_option, into))]
   pub name:  Option<String>,
+}
+
+impl Address {
+  pub fn new(email: EmailAddress) -> Self {
+    Self { email, name: None }
+  }
+
+  pub fn name(mut self, name: impl Into<String>) -> Self {
+    self.name = Some(name.into());
+    self
+  }
 }
 
 /// Identifier returned by a transport for a successfully accepted message.
@@ -163,11 +166,8 @@ mod tests {
   }
 
   #[test]
-  fn address_builder_works() {
-    let a = Address::builder()
-      .email("test@example.com".parse().unwrap())
-      .name("Test")
-      .build();
+  fn address_constructor_and_setter() {
+    let a = Address::new("test@example.com".parse().unwrap()).name("Test");
     assert_eq!(a.email.as_str(), "test@example.com");
     assert_eq!(a.name.as_deref(), Some("Test"));
   }
