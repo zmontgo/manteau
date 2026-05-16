@@ -60,7 +60,8 @@ pub use render::{RenderError, RenderErrorKind, Rendered};
 pub use transport::{Receipt, Transport, TransportFailure};
 #[cfg(feature = "mailjet")]
 pub use transports::mailjet::{
-  MailjetError, MailjetErrorKind, MailjetReceipt, MailjetTransport,
+  MailjetConfig, MailjetError, MailjetErrorKind, MailjetReceipt,
+  MailjetTransport,
 };
 pub use transports::mock::{MockReceipt, MockTransport};
 #[cfg(feature = "stdout")]

@@ -5,6 +5,8 @@
 //! and implement [`TransportFailure`] so retry middleware classifies failures
 //! by category (transient, auth, message-rejected).
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use serde::Serialize;
 use typed_builder::TypedBuilder;
@@ -15,6 +17,22 @@ use crate::{
   transport::{Receipt, Transport, TransportFailure},
 };
 
+/// Tunable defaults for [`MailjetTransport`]. Construct via
+/// [`MailjetConfig::builder`] to override only the fields you care about;
+/// everything else falls back to manteau's defaults.
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct MailjetConfig {
+  /// Per-request total timeout (DNS + connect + TLS + send + receive).
+  /// Default: 30 seconds. Mailjet's API is usually sub-second; 30s gives
+  /// room for slow networks without hanging the caller indefinitely.
+  #[builder(default = Duration::from_secs(30))]
+  pub timeout: Duration,
+}
+
+impl Default for MailjetConfig {
+  fn default() -> Self { Self::builder().build() }
+}
+
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct MailjetTransport {
   #[builder(setter(into))]
@@ -23,6 +41,10 @@ pub struct MailjetTransport {
   api_secret: String,
   #[builder(default = "https://api.mailjet.com".to_string(), setter(into))]
   base_url:   String,
+  /// Tunable defaults — timeout, etc. Override individual fields via
+  /// [`MailjetConfig::builder`] before passing in.
+  #[builder(default)]
+  config:     MailjetConfig,
   /// Reqwest client used for the API call. Defaults to a fresh client per
   /// transport; reuse a single transport instance to reuse the underlying
   /// connection pool.
@@ -204,6 +226,7 @@ impl Transport for MailjetTransport {
     let resp = self
       .client
       .post(&url)
+      .timeout(self.config.timeout)
       .basic_auth(&self.api_key, Some(&self.api_secret))
       .json(&payload)
       .send()
