@@ -6,7 +6,9 @@ pub mod message;
 pub mod models;
 pub mod render;
 pub mod templating;
+pub mod transport;
 
 pub use message::Message;
 pub use models::{Address, EmailAddress, EmailAddressError, MessageId};
 pub use render::{RenderError, RenderErrorKind, Rendered};
+pub use transport::{Transport, TransportFailure};
