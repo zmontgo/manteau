@@ -5,3 +5,6 @@
 //! - [`mailjet`] — behind the `mailjet` feature, HTTP API client.
 
 pub mod mock;
+
+#[cfg(feature = "stdout")]
+pub mod stdout;
