@@ -8,8 +8,10 @@ use std::sync::Mutex;
 use async_trait::async_trait;
 
 use crate::{
-  message::Message, models::MessageId, render::RenderError,
-  transport::Transport,
+  message::Message,
+  models::MessageId,
+  render::RenderError,
+  transport::{Receipt, Transport},
 };
 
 /// A no-op transport that captures every message it is asked to send.
@@ -26,6 +28,10 @@ pub struct MockTransport {
 #[derive(Debug, Clone)]
 pub struct MockReceipt {
   pub ids: Vec<MessageId>,
+}
+
+impl Receipt for MockReceipt {
+  fn ids(&self) -> &[MessageId] { &self.ids }
 }
 
 impl MockTransport {

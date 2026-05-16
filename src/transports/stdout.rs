@@ -10,7 +10,7 @@ use crate::{
   message::Message,
   models::{Address, MessageId},
   render::RenderError,
-  transport::Transport,
+  transport::{Receipt, Transport},
 };
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -24,6 +24,10 @@ pub struct StdoutTransport {
 #[derive(Debug, Clone)]
 pub struct StdoutReceipt {
   pub ids: Vec<MessageId>,
+}
+
+impl Receipt for StdoutReceipt {
+  fn ids(&self) -> &[MessageId] { &self.ids }
 }
 
 static STDOUT_COUNTER: AtomicU64 = AtomicU64::new(0);

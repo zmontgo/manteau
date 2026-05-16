@@ -57,7 +57,7 @@ pub mod transports;
 pub use message::Message;
 pub use models::{Address, EmailAddress, EmailAddressError, MessageId};
 pub use render::{RenderError, RenderErrorKind, Rendered};
-pub use transport::{Transport, TransportFailure};
+pub use transport::{Receipt, Transport, TransportFailure};
 #[cfg(feature = "mailjet")]
 pub use transports::mailjet::{
   MailjetError, MailjetErrorKind, MailjetReceipt, MailjetTransport,

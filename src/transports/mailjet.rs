@@ -12,7 +12,7 @@ use typed_builder::TypedBuilder;
 use crate::{
   message::Message,
   models::{Address, MessageId},
-  transport::{Transport, TransportFailure},
+  transport::{Receipt, Transport, TransportFailure},
 };
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -33,9 +33,14 @@ pub struct MailjetTransport {
 #[derive(Debug, Clone)]
 pub struct MailjetReceipt {
   pub ids: Vec<MessageId>,
-  /// Full JSON response from Mailjet — exposed for consumers who need
-  /// provider-specific fields not surfaced in `ids`.
+  /// Full JSON response from Mailjet. Exposed as an escape hatch for
+  /// fields not surfaced in `ids`; treat its schema as unstable and
+  /// provider-controlled — pin to specific JSON paths at your own risk.
   pub raw: serde_json::Value,
+}
+
+impl Receipt for MailjetReceipt {
+  fn ids(&self) -> &[MessageId] { &self.ids }
 }
 
 // ---------- Error machinery ----------

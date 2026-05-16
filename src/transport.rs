@@ -9,7 +9,19 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
-use crate::{message::Message, render::RenderError};
+use crate::{message::Message, models::MessageId, render::RenderError};
+
+/// Universal shape of a transport receipt — exposes the message IDs the
+/// provider assigned to the accepted message. Cross-transport observability
+/// code (logging, metrics, audit) writes against this trait so it works
+/// uniformly over manteau's transports and over consumer-defined ones.
+pub trait Receipt {
+  /// IDs the provider assigned to the accepted message(s). One transport
+  /// may produce multiple IDs (one per recipient, in Mailjet's case);
+  /// others may produce a single placeholder. Order matches the provider's
+  /// order, which usually mirrors the `to` field.
+  fn ids(&self) -> &[MessageId];
+}
 
 /// Properties every transport's error must surface so that abstractions
 /// written generically over `T: TransportFailure` can reason about the
@@ -49,8 +61,9 @@ pub trait TransportFailure: std::error::Error + Send + Sync + 'static {
 #[async_trait]
 pub trait Transport: Send + Sync {
   /// Provider-specific success type. Carries the message IDs and any raw
-  /// response data the consumer might want.
-  type Receipt;
+  /// response data the consumer might want. Must implement [`Receipt`] so
+  /// cross-transport observability code can extract IDs uniformly.
+  type Receipt: Receipt;
 
   /// Provider-specific error type. Must implement [`TransportFailure`] so
   /// cross-transport middleware can branch on the universal categories.
