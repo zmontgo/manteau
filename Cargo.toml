@@ -17,6 +17,10 @@ exclude      = [
     ".claude/",
 ]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default    = []
 mailjet    = ["dep:reqwest", "dep:serde_json", "tls-rustls"]
