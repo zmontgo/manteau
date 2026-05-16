@@ -19,6 +19,12 @@ use crate::{
 
 /// Tunable defaults for [`MailjetTransport`]. Construct via
 /// [`MailjetConfig::new`] and chain setters to override individual fields.
+///
+/// ```
+/// # use std::time::Duration;
+/// # use manteau::MailjetConfig;
+/// let config = MailjetConfig::new().timeout(Duration::from_secs(60));
+/// ```
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct MailjetConfig {
@@ -44,6 +50,27 @@ impl Default for MailjetConfig {
   fn default() -> Self { Self::new() }
 }
 
+/// Mailjet API transport — posts to v3.1 `/send` with HTTP Basic auth.
+///
+/// Requires a key/secret pair from a Mailjet account. Defaults to
+/// `https://api.mailjet.com`; override via [`base_url`] for sandbox or
+/// proxy environments. Uses [`MailjetConfig::default`] (30s timeout) for
+/// per-request budgets; override via [`config`] for tighter or looser.
+///
+/// One transport per process is the lazy choice — the internal
+/// `reqwest::Client` pools connections, so reusing a single transport
+/// across many sends is significantly cheaper than constructing one per
+/// request.
+///
+/// ```no_run
+/// # use std::time::Duration;
+/// # use manteau::{MailjetConfig, MailjetTransport};
+/// let transport = MailjetTransport::new("api-key", "api-secret")
+///   .config(MailjetConfig::new().timeout(Duration::from_secs(60)));
+/// ```
+///
+/// [`base_url`]: MailjetTransport::base_url
+/// [`config`]: MailjetTransport::config
 #[derive(Debug, Clone)]
 pub struct MailjetTransport {
   api_key:    String,
@@ -54,6 +81,13 @@ pub struct MailjetTransport {
 }
 
 impl MailjetTransport {
+  /// Build with the required Mailjet credentials. Defaults applied:
+  ///
+  /// - `base_url`: `https://api.mailjet.com`
+  /// - `config`: [`MailjetConfig::default`] (30s timeout)
+  /// - `client`: a fresh [`reqwest::Client`]
+  ///
+  /// Override any of these by chaining the corresponding setter.
   pub fn new(
     api_key: impl Into<String>,
     api_secret: impl Into<String>,
@@ -68,11 +102,14 @@ impl MailjetTransport {
     }
   }
 
+  /// Override the API host. Useful for sandbox environments, proxies, or
+  /// fakes (wiremock in integration tests).
   pub fn base_url(mut self, base_url: Url) -> Self {
     self.base_url = base_url;
     self
   }
 
+  /// Override the tunable defaults (timeout, etc.). See [`MailjetConfig`].
   pub fn config(mut self, config: MailjetConfig) -> Self {
     self.config = config;
     self
@@ -86,6 +123,11 @@ impl MailjetTransport {
   }
 }
 
+/// Acknowledgement returned by [`MailjetTransport::send`] for a successful
+/// post.
+///
+/// `ids` contains one [`MessageId`] per recipient in `to` order — Mailjet
+/// assigns separate IDs even when the message body is identical.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct MailjetReceipt {
@@ -102,6 +144,13 @@ impl Receipt for MailjetReceipt {
 
 // ---------- Error machinery ----------
 
+/// Error returned by [`MailjetTransport::send`].
+///
+/// Follows manteau's standard kind + source pattern (see the
+/// [`crate::transport`] module docs). Branch on [`MailjetError::kind`] for
+/// programmatic decisions; `Display` carries the upstream's message to
+/// operator logs; the original `reqwest::Error` / `serde_json::Error` is
+/// preserved in the `#[source]` chain for downcasting.
 #[derive(Debug, thiserror::Error)]
 #[error("{source}")]
 pub struct MailjetError {
@@ -113,6 +162,19 @@ pub struct MailjetError {
 impl MailjetError {
   /// The category of failure. Callers branch on this for retry policy;
   /// the human-readable message comes from the source chain.
+  ///
+  /// ```
+  /// # use manteau::{MailjetError, MailjetErrorKind};
+  /// # fn classify(err: &MailjetError) {
+  /// match err.kind() {
+  ///   MailjetErrorKind::Network => { /* retry with backoff */ }
+  ///   MailjetErrorKind::Auth => { /* refresh credentials */ }
+  ///   MailjetErrorKind::Provider { status: 429 } => { /* honor retry-after */ }
+  ///   MailjetErrorKind::Provider { status: 500..=599 } => { /* retry */ }
+  ///   _ => { /* surface to caller */ }
+  /// }
+  /// # }
+  /// ```
   pub fn kind(&self) -> &MailjetErrorKind { &self.kind }
 }
 

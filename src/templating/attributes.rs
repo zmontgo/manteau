@@ -28,9 +28,21 @@ impl ColorError {
 impl Color {
   /// Build a color from a 24-bit RGB value. `0xff0000` becomes `#ff0000`.
   /// Bits above the low 24 are ignored.
+  ///
+  /// ```
+  /// # use manteau::templating::attributes::Color;
+  /// assert_eq!(Color::hex(0xff0000).to_string(), "#ff0000");
+  /// ```
   pub fn hex(rgb: u32) -> Self { Self(format!("#{:06x}", rgb & 0x00ff_ffff)) }
 
   /// Parse a hex (`#rgb`, `#rrggbb`, `#rgba`, `#rrggbbaa`) or named color.
+  ///
+  /// ```
+  /// # use manteau::templating::attributes::Color;
+  /// assert!(Color::try_parse("#ff0000").is_ok());
+  /// assert!(Color::try_parse("red").is_ok());
+  /// assert!(Color::try_parse("not a color").is_err());
+  /// ```
   pub fn try_parse(s: &str) -> Result<Self, ColorError> {
     let s = s.trim();
     if is_valid_hex(s) || is_valid_name(s) {
@@ -85,6 +97,10 @@ impl AsRef<str> for Color {
 pub struct Pixels(u32);
 
 impl Pixels {
+  /// ```
+  /// # use manteau::templating::attributes::Pixels;
+  /// assert_eq!(Pixels::new(14).to_string(), "14px");
+  /// ```
   pub fn new(value: u32) -> Self { Self(value) }
 
   pub fn value(self) -> u32 { self.0 }
@@ -117,6 +133,13 @@ impl PercentageError {
 }
 
 impl Percentage {
+  /// Build a percentage, enforcing the 0..=100 invariant.
+  ///
+  /// ```
+  /// # use manteau::templating::attributes::Percentage;
+  /// assert_eq!(Percentage::new(50).unwrap().to_string(), "50%");
+  /// assert!(Percentage::new(101).is_err());
+  /// ```
   pub fn new(value: u8) -> Result<Self, PercentageError> {
     if value <= 100 {
       Ok(Self(value))
@@ -154,6 +177,16 @@ impl UrlError {
 }
 
 impl Url {
+  /// Parse and validate a URL string. Accepts any absolute URL the
+  /// `validator` crate's HTML5-spec check considers well-formed —
+  /// `https://`, `http://`, `mailto:`, `tel:` schemes all pass.
+  ///
+  /// ```
+  /// # use manteau::templating::attributes::Url;
+  /// assert!(Url::try_parse("https://example.com").is_ok());
+  /// assert!(Url::try_parse("mailto:hello@example.com").is_ok());
+  /// assert!(Url::try_parse("not a url").is_err());
+  /// ```
   pub fn try_parse(s: &str) -> Result<Self, UrlError> {
     let s = s.trim();
     if s.validate_url() {

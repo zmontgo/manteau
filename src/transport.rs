@@ -4,6 +4,24 @@
 //! Cross-transport abstractions (retry policy, error rollup, alerting) live
 //! against [`TransportFailure`] — they work uniformly over manteau's own
 //! transports and over consumer-defined ones.
+//!
+//! # Error pattern
+//!
+//! Every transport's error follows manteau's standard kind + source shape:
+//!
+//! - A struct holds a private `kind` enum (the taxonomy callers branch on) and
+//!   a `Box<dyn Error + Send + Sync>` source (the upstream error, preserved for
+//!   downcasting and Display chaining).
+//! - `Display` delegates to source — operator logs get the upstream library's
+//!   message verbatim.
+//! - A `pub fn kind()` accessor surfaces the taxonomy; a `pub(crate)`
+//!   constructor on the kind enum pairs a kind with a source.
+//! - Variants are named for failure source (`Network`, `Auth`, `Provider {
+//!   status }`), not architectural layer.
+//!
+//! Consumer transports implementing [`Transport`] should follow the same
+//! shape so their errors slot into cross-transport tooling cleanly. See
+//! [`MailjetError`](crate::MailjetError) for a worked example.
 
 use std::time::Duration;
 

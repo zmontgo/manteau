@@ -27,6 +27,13 @@ impl Section {
   }
 
   /// Append one column.
+  ///
+  /// ```
+  /// # use manteau::templating::{Column, Section};
+  /// let section = Section::new()
+  ///   .push_column(Column::new())
+  ///   .push_column(Column::new());
+  /// ```
   pub fn push_column(mut self, column: Column) -> Self {
     self.columns.push(column);
     self

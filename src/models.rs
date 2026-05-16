@@ -38,13 +38,20 @@ impl EmailAddress {
   pub fn as_str(&self) -> &str { &self.0 }
 
   /// The local part — everything before `@`.
+  ///
+  /// ```
+  /// # use manteau::EmailAddress;
+  /// let e: EmailAddress = "User@Example.COM".parse().unwrap();
+  /// assert_eq!(e.local_part(), "User");
+  /// assert_eq!(e.domain(), "example.com");
+  /// ```
   pub fn local_part(&self) -> &str {
     // `validate_email` enforces exactly one `@`, so split_once cannot return
     // None for a successfully constructed EmailAddress.
     self.0.split_once('@').map(|(l, _)| l).unwrap_or(&self.0)
   }
 
-  /// The domain — everything after `@`, lower-cased.
+  /// The domain — everything after `@`, lower-cased on construction.
   pub fn domain(&self) -> &str {
     self.0.split_once('@').map(|(_, d)| d).unwrap_or("")
   }

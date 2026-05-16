@@ -29,11 +29,17 @@ impl Template {
     }
   }
 
+  /// Set the inbox preview text. Renders into `<mj-head><mj-preview>` —
+  /// the head section is emitted automatically when preview_text or title
+  /// is set.
   pub fn preview_text(mut self, text: impl Into<String>) -> Self {
     self.preview_text = Some(text.into());
     self
   }
 
+  /// Set the document title. Renders into `<mj-head><mj-title>` — the
+  /// head section is emitted automatically when title or preview_text is
+  /// set.
   pub fn title(mut self, title: impl Into<String>) -> Self {
     self.title = Some(title.into());
     self

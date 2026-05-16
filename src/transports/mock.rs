@@ -25,6 +25,11 @@ pub struct MockTransport {
   sent: Mutex<Vec<Message>>,
 }
 
+/// Acknowledgement returned by [`MockTransport::send`]. Always carries a
+/// single placeholder ID (`"mock"`) — the receipt exists to satisfy the
+/// [`Transport`] contract. Assertions in tests should usually inspect
+/// captured messages via [`MockTransport::sent`] /
+/// [`MockTransport::take_sent`], not the receipt.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct MockReceipt {
@@ -36,9 +41,21 @@ impl Receipt for MockReceipt {
 }
 
 impl MockTransport {
+  /// Create an empty transport. Inspect captured messages with [`sent`]
+  /// (non-destructive snapshot) or [`take_sent`] (drain).
+  ///
+  /// [`sent`]: MockTransport::sent
+  /// [`take_sent`]: MockTransport::take_sent
   pub fn new() -> Self { Self::default() }
 
-  /// Non-destructive snapshot of messages captured so far.
+  /// Non-destructive snapshot of messages captured so far. The mock
+  /// retains them — successive calls return the same set.
+  ///
+  /// Pair with [`take_sent`](MockTransport::take_sent) for drain
+  /// semantics. The two differ:
+  ///
+  /// - `sent()` clones the internal Vec; state unchanged.
+  /// - `take_sent()` moves the internal Vec out; state reset to empty.
   pub fn sent(&self) -> Vec<Message> {
     self
       .sent
@@ -48,6 +65,7 @@ impl MockTransport {
   }
 
   /// Drain captured messages — return them and clear internal state.
+  /// See [`sent`](MockTransport::sent) for the snapshot variant.
   pub fn take_sent(&self) -> Vec<Message> {
     std::mem::take(
       &mut *self.sent.lock().expect("MockTransport mutex poisoned"),

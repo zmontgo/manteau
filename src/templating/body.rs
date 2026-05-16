@@ -27,6 +27,17 @@ impl Body {
   /// Append one section. The runtime-modification path — used to
   /// conditionally tack a section on (a coupon offer in a welcome email,
   /// say) without rebuilding the whole tree.
+  ///
+  /// ```
+  /// # use manteau::templating::{Body, Section};
+  /// # let user_coupon_eligible = true;
+  /// # let welcome = Section::new();
+  /// # let coupon = Section::new();
+  /// let mut body = Body::new().push_section(welcome);
+  /// if user_coupon_eligible {
+  ///   body = body.push_section(coupon);
+  /// }
+  /// ```
   pub fn push_section(mut self, section: Section) -> Self {
     self.sections.push(section);
     self

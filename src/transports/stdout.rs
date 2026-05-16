@@ -12,11 +12,19 @@ use crate::{
   transport::{Receipt, Transport},
 };
 
+/// Transport that prints the envelope and (optionally) the rendered HTML
+/// body to stdout. For local development and CLI tools.
+///
+/// Switch from the default 280-character HTML preview to the full body
+/// with [`StdoutTransport::verbose`].
 #[derive(Debug, Clone, Default)]
 pub struct StdoutTransport {
   verbose: bool,
 }
 
+/// Acknowledgement returned by [`StdoutTransport::send`]. The single ID
+/// is a process-monotonic counter (`stdout-0`, `stdout-1`, …) —
+/// deterministic within a single process.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct StdoutReceipt {

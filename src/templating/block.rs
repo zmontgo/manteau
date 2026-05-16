@@ -60,14 +60,19 @@ impl Element for Block {
   }
 }
 
+/// Wraps a [`Text`] into [`Block::Text`]. Lets `.push(Text::new(..))`
+/// and `vec![Text::new(..).into(), ..]` both flow into containers without
+/// the caller spelling the variant.
 impl From<Text> for Block {
   fn from(t: Text) -> Self { Self::Text(t) }
 }
 
+/// Wraps a [`Button`] into [`Block::Button`].
 impl From<Button> for Block {
   fn from(b: Button) -> Self { Self::Button(b) }
 }
 
+/// Wraps an [`Image`] into [`Block::Image`].
 impl From<Image> for Block {
   fn from(i: Image) -> Self { Self::Image(i) }
 }
