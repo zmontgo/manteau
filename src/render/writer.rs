@@ -25,7 +25,11 @@ impl MjmlWriter {
   pub fn open(&mut self, tag: &'static str) -> ElementWriter<'_> {
     self.buf.push('<');
     self.buf.push_str(tag);
-    ElementWriter { writer: self, tag }
+    ElementWriter {
+      writer: self,
+      tag,
+      closed: false,
+    }
   }
 
   /// Consume the writer and return the accumulated MJML string.
@@ -35,11 +39,18 @@ impl MjmlWriter {
   pub fn as_str(&self) -> &str { &self.buf }
 }
 
-/// Per-element builder. Methods are consuming so that "attr after close" is a
-/// compile-time error — the type system makes misuse impossible.
+/// Per-element builder. Methods are consuming so that "attr after close" is
+/// a compile-time error — the type system makes misuse impossible.
+///
+/// The struct is `#[must_use]` so the compiler warns when an opened element
+/// is discarded without a terminal call. As a safety net, `Drop` closes a
+/// forgotten element as self-closing so the buffer never contains a
+/// half-open tag.
+#[must_use = "an opened element must be closed with text(), children(), or close_self() — dropping it produces a self-closing tag"]
 pub struct ElementWriter<'a> {
   writer: &'a mut MjmlWriter,
   tag:    &'static str,
+  closed: bool,
 }
 
 impl<'a> ElementWriter<'a> {
@@ -61,26 +72,42 @@ impl<'a> ElementWriter<'a> {
   }
 
   /// Close the opening tag, write escaped text, write the closing tag.
-  pub fn text(self, content: &str) {
+  pub fn text(mut self, content: &str) {
     self.writer.buf.push('>');
     escape_text_into(&mut self.writer.buf, content);
     self.writer.buf.push_str("</");
     self.writer.buf.push_str(self.tag);
     self.writer.buf.push('>');
+    self.closed = true;
   }
 
   /// Close the opening tag, invoke `f` to write children, write the
   /// closing tag.
-  pub fn children(self, f: impl FnOnce(&mut MjmlWriter)) {
+  pub fn children(mut self, f: impl FnOnce(&mut MjmlWriter)) {
     self.writer.buf.push('>');
     f(self.writer);
     self.writer.buf.push_str("</");
     self.writer.buf.push_str(self.tag);
     self.writer.buf.push('>');
+    self.closed = true;
   }
 
   /// Close as a self-closing tag (`<tag .../>`).
-  pub fn close_self(self) { self.writer.buf.push_str("/>"); }
+  pub fn close_self(mut self) {
+    self.writer.buf.push_str("/>");
+    self.closed = true;
+  }
+}
+
+impl Drop for ElementWriter<'_> {
+  fn drop(&mut self) {
+    if !self.closed {
+      // Terminal method never called. Close as self-closing so the buffer
+      // is at least well-formed MJML — the rendered output will be wrong
+      // (no content), which surfaces in tests, but it will parse.
+      self.writer.buf.push_str("/>");
+    }
+  }
 }
 
 fn escape_attr_into(buf: &mut String, s: &str) {
@@ -168,5 +195,16 @@ mod tests {
       w.into_string(),
       r#"<mj-image src="https://example.com/img.png"/>"#
     );
+  }
+
+  #[test]
+  fn drop_without_terminal_closes_self() {
+    let mut w = MjmlWriter::new();
+    {
+      // Intentionally forget the terminal call.
+      let _ = w.open("mj-text");
+    }
+    // Drop runs and recovers with self-closing.
+    assert_eq!(w.into_string(), "<mj-text/>");
   }
 }
