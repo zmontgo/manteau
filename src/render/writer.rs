@@ -28,11 +28,6 @@ impl MjmlWriter {
     ElementWriter { writer: self, tag }
   }
 
-  /// Write a raw MJML fragment without escaping. Reserved for cases where
-  /// the caller has already produced an MJML-safe string (e.g. concatenating
-  /// pre-rendered children). Most code should use `open`.
-  pub fn write_raw(&mut self, fragment: &str) { self.buf.push_str(fragment); }
-
   /// Consume the writer and return the accumulated MJML string.
   pub fn into_string(self) -> String { self.buf }
 
