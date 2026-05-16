@@ -1,7 +1,14 @@
 [package]
-name = "manteau"
-version = "0.1.0"
-edition = "2024"
+name        = "manteau"
+version     = "0.1.0"
+edition     = "2024"
+authors     = ["the manteau contributors"]
+license     = "MIT OR Apache-2.0"
+description = "Typed builders for MJML emails with pluggable transports (Mailjet, stdout, mock)."
+repository  = "https://github.com/USER/manteau"
+readme      = "README.md"
+keywords    = ["email", "mjml", "mailjet", "template", "transactional"]
+categories  = ["email", "template-engine"]
 
 [features]
 default    = []
