@@ -22,7 +22,7 @@ fn make_message() -> Message {
           Section::builder()
             .columns(vec![
               Column::builder()
-                .children(vec![Text::builder().content("Hi!").build().into()])
+                .children(vec![Text::new("Hi!").into()])
                 .build(),
             ])
             .build(),

@@ -1,5 +1,3 @@
-use typed_builder::TypedBuilder;
-
 use crate::{
   render::MjmlWriter,
   templating::{
@@ -10,15 +8,38 @@ use crate::{
 
 /// `mj-image` — embedded image with required source URL.
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone)]
 pub struct Image {
   pub src:   Url,
-  #[builder(default, setter(strip_option, into))]
   pub alt:   Option<String>,
-  #[builder(default, setter(strip_option))]
   pub href:  Option<Url>,
-  #[builder(default, setter(strip_option, into))]
   pub width: Option<Pixels>,
+}
+
+impl Image {
+  pub fn new(src: Url) -> Self {
+    Self {
+      src,
+      alt: None,
+      href: None,
+      width: None,
+    }
+  }
+
+  pub fn alt(mut self, alt: impl Into<String>) -> Self {
+    self.alt = Some(alt.into());
+    self
+  }
+
+  pub fn href(mut self, href: Url) -> Self {
+    self.href = Some(href);
+    self
+  }
+
+  pub fn width(mut self, width: impl Into<Pixels>) -> Self {
+    self.width = Some(width.into());
+    self
+  }
 }
 
 impl Element for Image {

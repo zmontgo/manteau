@@ -1,5 +1,3 @@
-use typed_builder::TypedBuilder;
-
 use crate::{
   render::MjmlWriter,
   templating::{
@@ -10,18 +8,45 @@ use crate::{
 
 /// `mj-text` — paragraph or run of styled text.
 #[non_exhaustive]
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone)]
 pub struct Text {
-  #[builder(setter(into))]
   pub content:     String,
-  #[builder(default, setter(strip_option))]
   pub color:       Option<Color>,
-  #[builder(default, setter(strip_option, into))]
   pub font_size:   Option<Pixels>,
-  #[builder(default, setter(strip_option, into))]
   pub font_family: Option<FontFamily>,
-  #[builder(default, setter(strip_option))]
   pub align:       Option<Alignment>,
+}
+
+impl Text {
+  pub fn new(content: impl Into<String>) -> Self {
+    Self {
+      content:     content.into(),
+      color:       None,
+      font_size:   None,
+      font_family: None,
+      align:       None,
+    }
+  }
+
+  pub fn color(mut self, color: Color) -> Self {
+    self.color = Some(color);
+    self
+  }
+
+  pub fn font_size(mut self, size: impl Into<Pixels>) -> Self {
+    self.font_size = Some(size.into());
+    self
+  }
+
+  pub fn font_family(mut self, family: impl Into<FontFamily>) -> Self {
+    self.font_family = Some(family.into());
+    self
+  }
+
+  pub fn align(mut self, align: Alignment) -> Self {
+    self.align = Some(align);
+    self
+  }
 }
 
 impl Element for Text {

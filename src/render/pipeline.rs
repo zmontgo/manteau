@@ -61,7 +61,7 @@ mod tests {
               .columns(vec![
                 Column::builder()
                   .children(vec![
-                    Text::builder().content("Hello, world!").build().into(),
+                    Text::new("Hello, world!").into(),
                   ])
                   .build(),
               ])
