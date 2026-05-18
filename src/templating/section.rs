@@ -1,10 +1,6 @@
 use crate::{
   render::MjmlWriter,
-  templating::{
-    attributes::{Color, Pixels},
-    column::Column,
-    element::Element,
-  },
+  templating::{attributes::prelude::*, column::Column, element::Element},
 };
 
 /// `mj-section` — horizontal row of [`Column`]s in a [`Body`].

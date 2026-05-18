@@ -1,6 +1,6 @@
 use crate::{
   render::MjmlWriter,
-  templating::{attributes::Percentage, block::Block, element::Element},
+  templating::{attributes::prelude::*, block::Block, element::Element},
 };
 
 /// `mj-column` — vertical stack of [`Block`]s inside a [`Section`].
@@ -9,8 +9,11 @@ use crate::{
 #[non_exhaustive]
 #[derive(Debug, Clone, Default)]
 pub struct Column {
-  pub children: Vec<Block>,
-  pub width:    Option<Percentage>,
+  pub children:         Vec<Block>,
+  pub width:            Option<Percentage>,
+  pub background_color: Option<Color>,
+  pub border_radius:    Option<Measurement>,
+  pub padding:          Option<Measurement>,
 }
 
 impl Column {
@@ -42,12 +45,30 @@ impl Column {
     self.width = Some(width);
     self
   }
+
+  pub fn background_color(mut self, color: Color) -> Self {
+    self.background_color = Some(color);
+    self
+  }
+
+  pub fn border_radius(mut self, border_radius: Measurement) -> Self {
+    self.border_radius = Some(border_radius);
+    self
+  }
+
+  pub fn padding(mut self, padding: Measurement) -> Self {
+    self.padding = Some(padding);
+    self
+  }
 }
 
 impl Element for Column {
   fn write_mjml(&self, w: &mut MjmlWriter) {
     w.open("mj-column")
       .attr("width", self.width.as_ref())
+      .attr("background-color", self.background_color.as_ref())
+      .attr("border-radius", self.border_radius.as_ref())
+      .attr("padding", self.padding.as_ref())
       .children(|w| {
         for child in &self.children {
           child.write_mjml(w);

@@ -1,9 +1,6 @@
 use crate::{
   render::MjmlWriter,
-  templating::{
-    attributes::{Color, Url},
-    element::Element,
-  },
+  templating::{attributes::prelude::*, element::Element},
 };
 
 /// `mj-button` — clickable button with required destination URL.
@@ -14,6 +11,11 @@ pub struct Button {
   pub href:             Url,
   pub background_color: Option<Color>,
   pub color:            Option<Color>,
+  pub border_radius:    Option<Measurement>,
+  pub font_size:        Option<Measurement>,
+  pub font_weight:      Option<FontWeight>,
+  pub inner_padding:    PaddingOptions,
+  pub align:            Option<ButtonAlignment>,
 }
 
 impl Button {
@@ -23,6 +25,11 @@ impl Button {
       href,
       background_color: None,
       color: None,
+      border_radius: None,
+      font_size: None,
+      font_weight: None,
+      inner_padding: PaddingOptions::default(),
+      align: None,
     }
   }
 
@@ -33,6 +40,31 @@ impl Button {
 
   pub fn color(mut self, color: Color) -> Self {
     self.color = Some(color);
+    self
+  }
+
+  pub fn border_radius(mut self, radius: impl Into<Measurement>) -> Self {
+    self.border_radius = Some(radius.into());
+    self
+  }
+
+  pub fn font_size(mut self, size: impl Into<Measurement>) -> Self {
+    self.font_size = Some(size.into());
+    self
+  }
+
+  pub fn font_weight(mut self, weight: impl Into<FontWeight>) -> Self {
+    self.font_weight = Some(weight.into());
+    self
+  }
+
+  pub fn inner_padding(mut self, inner_padding: PaddingOptions) -> Self {
+    self.inner_padding = inner_padding;
+    self
+  }
+
+  pub fn align(mut self, align: impl Into<ButtonAlignment>) -> Self {
+    self.align = Some(align.into());
     self
   }
 }

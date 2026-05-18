@@ -1,30 +1,35 @@
 use crate::{
   render::MjmlWriter,
-  templating::{
-    attributes::{Alignment, Color, FontFamily, Pixels},
-    element::Element,
-  },
+  templating::{attributes::prelude::*, element::Element},
 };
 
 /// `mj-text` — paragraph or run of styled text.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Text {
-  pub content:     String,
-  pub color:       Option<Color>,
-  pub font_size:   Option<Pixels>,
-  pub font_family: Option<FontFamily>,
-  pub align:       Option<Alignment>,
+  pub content:        String,
+  pub color:          Option<Color>,
+  pub font_size:      Option<Pixels>,
+  pub font_family:    Option<FontFamily>,
+  pub align:          Option<Alignment>,
+  pub font_weight:    Option<FontWeight>,
+  pub line_height:    Option<LineHeight>,
+  pub letter_spacing: Option<Measurement>,
+  pub padding:        PaddingOptions,
 }
 
 impl Text {
   pub fn new(content: impl Into<String>) -> Self {
     Self {
-      content:     content.into(),
-      color:       None,
-      font_size:   None,
-      font_family: None,
-      align:       None,
+      content:        content.into(),
+      color:          None,
+      font_size:      None,
+      font_family:    None,
+      align:          None,
+      font_weight:    None,
+      line_height:    None,
+      letter_spacing: None,
+      padding:        PaddingOptions::default(),
     }
   }
 
@@ -45,6 +50,26 @@ impl Text {
 
   pub fn align(mut self, align: Alignment) -> Self {
     self.align = Some(align);
+    self
+  }
+
+  pub fn font_weight(mut self, weight: impl Into<FontWeight>) -> Self {
+    self.font_weight = Some(weight.into());
+    self
+  }
+
+  pub fn line_height(mut self, line_height: impl Into<LineHeight>) -> Self {
+    self.line_height = Some(line_height.into());
+    self
+  }
+
+  pub fn letter_spacing(mut self, spacing: impl Into<Measurement>) -> Self {
+    self.letter_spacing = Some(spacing.into());
+    self
+  }
+
+  pub fn padding(mut self, padding: PaddingOptions) -> Self {
+    self.padding = padding;
     self
   }
 }

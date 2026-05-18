@@ -1,9 +1,6 @@
 use crate::{
   render::MjmlWriter,
-  templating::{
-    attributes::{Pixels, Url},
-    element::Element,
-  },
+  templating::{attributes::prelude::*, element::Element},
 };
 
 /// `mj-image` — embedded image with required source URL.

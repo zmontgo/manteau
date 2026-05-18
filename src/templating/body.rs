@@ -1,10 +1,6 @@
 use crate::{
   render::MjmlWriter,
-  templating::{
-    attributes::{Color, Pixels},
-    element::Element,
-    section::Section,
-  },
+  templating::{attributes::prelude::*, element::Element, section::Section},
 };
 
 /// `mj-body` — top-level container of [`Section`]s.
