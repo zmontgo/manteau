@@ -15,6 +15,7 @@ pub struct Text {
   pub font_weight:    Option<FontWeight>,
   pub line_height:    Option<LineHeight>,
   pub letter_spacing: Option<Measurement>,
+  pub text_transform: Option<TextTransform>,
   pub padding:        PaddingOptions,
 }
 
@@ -29,6 +30,7 @@ impl Text {
       font_weight:    None,
       line_height:    None,
       letter_spacing: None,
+      text_transform: None,
       padding:        PaddingOptions::default(),
     }
   }
@@ -68,6 +70,11 @@ impl Text {
     self
   }
 
+  pub fn text_transform(mut self, transform: TextTransform) -> Self {
+    self.text_transform = Some(transform);
+    self
+  }
+
   pub fn padding(mut self, padding: PaddingOptions) -> Self {
     self.padding = padding;
     self
@@ -81,6 +88,14 @@ impl Element for Text {
       .attr("font-size", self.font_size.as_ref())
       .attr("font-family", self.font_family.as_ref())
       .attr("align", self.align.as_ref())
+      .attr("font-weight", self.font_weight.as_ref())
+      .attr("line-height", self.line_height.as_ref())
+      .attr("letter-spacing", self.letter_spacing.as_ref())
+      .attr("text-transform", self.text_transform.as_ref())
+      .attr("padding-top", self.padding.top())
+      .attr("padding-right", self.padding.right())
+      .attr("padding-bottom", self.padding.bottom())
+      .attr("padding-left", self.padding.left())
       .text(&self.content);
   }
 }

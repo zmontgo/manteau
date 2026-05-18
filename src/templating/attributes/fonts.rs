@@ -27,8 +27,10 @@ impl AsRef<str> for FontFamily {
   fn as_ref(&self) -> &str { &self.0 }
 }
 
-/// Font weight, 100-900
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Font weight, 100-900. Renders as the numeric value (`"700"`) rather than
+/// the CSS keyword (`"bold"`) — every email client handles the numeric form,
+/// while the keyword subset varies by client.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FontWeight {
   /// 100
   Thin,
@@ -48,4 +50,47 @@ pub enum FontWeight {
   ExtraBold,
   /// 900
   Black,
+}
+
+impl FontWeight {
+  /// The CSS numeric value (100 through 900).
+  pub fn weight(self) -> u16 {
+    match self {
+      Self::Thin => 100,
+      Self::ExtraLight => 200,
+      Self::Light => 300,
+      Self::Normal => 400,
+      Self::Medium => 500,
+      Self::SemiBold => 600,
+      Self::Bold => 700,
+      Self::ExtraBold => 800,
+      Self::Black => 900,
+    }
+  }
+}
+
+impl std::fmt::Display for FontWeight {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.weight())
+  }
+}
+
+/// CSS `text-transform` — controls case of rendered text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TextTransform {
+  None,
+  Uppercase,
+  Lowercase,
+  Capitalize,
+}
+
+impl std::fmt::Display for TextTransform {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(match self {
+      Self::None => "none",
+      Self::Uppercase => "uppercase",
+      Self::Lowercase => "lowercase",
+      Self::Capitalize => "capitalize",
+    })
+  }
 }

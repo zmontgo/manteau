@@ -25,7 +25,7 @@ pub struct Pixels(u32);
 
 impl Pixels {
   /// ```
-  /// # use manteau::templating::attributes::Pixels;
+  /// # use manteau::templating::attributes::measurements::Pixels;
   /// assert_eq!(Pixels::new(14).to_string(), "14px");
   /// ```
   pub fn new(value: u32) -> Self { Self(value) }
@@ -74,7 +74,7 @@ pub struct Rem(f32);
 impl Rem {
   /// ```
   /// # use manteau::templating::attributes::prelude::*;
-  /// assert_eq!(Em::new(1.3).to_string(), "1.3em");
+  /// assert_eq!(Rem::new(1.3).to_string(), "1.3rem");
   /// ```
   pub fn new(value: f32) -> Self { Self(value) }
 
@@ -111,7 +111,7 @@ impl Percentage {
   /// Build a percentage, enforcing the 0..=100 invariant.
   ///
   /// ```
-  /// # use manteau::templating::attributes::Percentage;
+  /// # use manteau::templating::attributes::measurements::Percentage;
   /// assert_eq!(Percentage::new(50).unwrap().to_string(), "50%");
   /// assert!(Percentage::new(101).is_err());
   /// ```

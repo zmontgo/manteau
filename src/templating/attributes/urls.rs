@@ -23,7 +23,7 @@ impl Url {
   /// `https://`, `http://`, `mailto:`, `tel:` schemes all pass.
   ///
   /// ```
-  /// # use manteau::templating::attributes::Url;
+  /// # use manteau::templating::attributes::urls::Url;
   /// assert!(Url::try_parse("https://example.com").is_ok());
   /// assert!(Url::try_parse("mailto:hello@example.com").is_ok());
   /// assert!(Url::try_parse("not a url").is_err());

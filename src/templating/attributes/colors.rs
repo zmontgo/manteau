@@ -20,7 +20,7 @@ impl Color {
   /// Bits above the low 24 are ignored.
   ///
   /// ```
-  /// # use manteau::templating::attributes::Color;
+  /// # use manteau::templating::attributes::colors::Color;
   /// assert_eq!(Color::hex(0xff0000).to_string(), "#ff0000");
   /// ```
   pub fn hex(rgb: u32) -> Self { Self(format!("#{:06x}", rgb & 0x00ff_ffff)) }
@@ -28,7 +28,7 @@ impl Color {
   /// Parse a hex (`#rgb`, `#rrggbb`, `#rgba`, `#rrggbbaa`) or named color.
   ///
   /// ```
-  /// # use manteau::templating::attributes::Color;
+  /// # use manteau::templating::attributes::colors::Color;
   /// assert!(Color::try_parse("#ff0000").is_ok());
   /// assert!(Color::try_parse("red").is_ok());
   /// assert!(Color::try_parse("not a color").is_err());

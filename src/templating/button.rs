@@ -63,8 +63,8 @@ impl Button {
     self
   }
 
-  pub fn align(mut self, align: impl Into<ButtonAlignment>) -> Self {
-    self.align = Some(align.into());
+  pub fn align(mut self, align: ButtonAlignment) -> Self {
+    self.align = Some(align);
     self
   }
 }
@@ -75,6 +75,14 @@ impl Element for Button {
       .attr("href", Some(&self.href))
       .attr("background-color", self.background_color.as_ref())
       .attr("color", self.color.as_ref())
+      .attr("border-radius", self.border_radius.as_ref())
+      .attr("font-size", self.font_size.as_ref())
+      .attr("font-weight", self.font_weight.as_ref())
+      .attr("align", self.align.as_ref())
+      .attr("inner-padding-top", self.inner_padding.top())
+      .attr("inner-padding-right", self.inner_padding.right())
+      .attr("inner-padding-bottom", self.inner_padding.bottom())
+      .attr("inner-padding-left", self.inner_padding.left())
       .text(&self.content);
   }
 }

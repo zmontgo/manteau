@@ -13,7 +13,7 @@ pub struct Column {
   pub width:            Option<Percentage>,
   pub background_color: Option<Color>,
   pub border_radius:    Option<Measurement>,
-  pub padding:          Option<Measurement>,
+  pub padding:          PaddingOptions,
 }
 
 impl Column {
@@ -56,8 +56,8 @@ impl Column {
     self
   }
 
-  pub fn padding(mut self, padding: Measurement) -> Self {
-    self.padding = Some(padding);
+  pub fn padding(mut self, padding: PaddingOptions) -> Self {
+    self.padding = padding;
     self
   }
 }
@@ -68,7 +68,10 @@ impl Element for Column {
       .attr("width", self.width.as_ref())
       .attr("background-color", self.background_color.as_ref())
       .attr("border-radius", self.border_radius.as_ref())
-      .attr("padding", self.padding.as_ref())
+      .attr("padding-top", self.padding.top())
+      .attr("padding-right", self.padding.right())
+      .attr("padding-bottom", self.padding.bottom())
+      .attr("padding-left", self.padding.left())
       .children(|w| {
         for child in &self.children {
           child.write_mjml(w);

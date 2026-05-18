@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::{
   message::Message,
   models::{Address, MessageId},
-  templating::attributes::Url,
+  templating::attributes::urls::Url,
   transport::{Receipt, Transport, TransportFailure},
 };
 

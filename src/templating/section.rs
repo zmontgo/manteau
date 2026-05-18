@@ -11,7 +11,7 @@ use crate::{
 pub struct Section {
   pub columns:          Vec<Column>,
   pub background_color: Option<Color>,
-  pub padding:          Option<Pixels>,
+  pub padding:          PaddingOptions,
 }
 
 impl Section {
@@ -40,8 +40,8 @@ impl Section {
     self
   }
 
-  pub fn padding(mut self, padding: impl Into<Pixels>) -> Self {
-    self.padding = Some(padding.into());
+  pub fn padding(mut self, padding: PaddingOptions) -> Self {
+    self.padding = padding;
     self
   }
 }
@@ -50,7 +50,10 @@ impl Element for Section {
   fn write_mjml(&self, w: &mut MjmlWriter) {
     w.open("mj-section")
       .attr("background-color", self.background_color.as_ref())
-      .attr("padding", self.padding.as_ref())
+      .attr("padding-top", self.padding.top())
+      .attr("padding-right", self.padding.right())
+      .attr("padding-bottom", self.padding.bottom())
+      .attr("padding-left", self.padding.left())
       .children(|w| {
         for column in &self.columns {
           column.write_mjml(w);
