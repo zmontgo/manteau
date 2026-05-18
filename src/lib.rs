@@ -46,6 +46,7 @@ pub mod templating;
 pub mod transport;
 pub mod transports;
 
+pub use manteau_macros::mjml;
 pub use message::Message;
 pub use models::{Address, EmailAddress, EmailAddressError, MessageId};
 pub use render::{RenderError, RenderErrorKind, Rendered};

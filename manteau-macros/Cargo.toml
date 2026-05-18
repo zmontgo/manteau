@@ -1,0 +1,20 @@
+[package]
+name         = "manteau-macros"
+version      = "0.1.4"
+edition      = "2024"
+rust-version = "1.85"
+authors      = ["Zachary Montgomery"]
+license      = "MIT OR Apache-2.0"
+description  = "Procedural macros for the manteau email-building crate. Not intended for direct use — depend on `manteau` and import macros from there."
+repository   = "https://github.com/zmontgo/manteau"
+keywords     = ["email", "mjml", "macro", "template"]
+categories   = ["email", "template-engine"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote       = "1"
+syn         = { version = "2", features = ["full"] }
+url         = "2"

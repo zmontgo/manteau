@@ -7,6 +7,19 @@ pub enum Measurement {
   Rem(Rem),
 }
 
+impl From<Pixels> for Measurement {
+  fn from(p: Pixels) -> Self { Self::Pixels(p) }
+}
+impl From<Percentage> for Measurement {
+  fn from(p: Percentage) -> Self { Self::Percentage(p) }
+}
+impl From<Em> for Measurement {
+  fn from(e: Em) -> Self { Self::Em(e) }
+}
+impl From<Rem> for Measurement {
+  fn from(r: Rem) -> Self { Self::Rem(r) }
+}
+
 impl std::fmt::Display for Measurement {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let inner: &dyn std::fmt::Display = match self {

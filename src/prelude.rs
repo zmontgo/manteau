@@ -2,8 +2,10 @@
 //!
 //! Glob-import this to get every first-class element type, child enum, the
 //! [`Push`] trait that unifies parent/child appends across containers,
-//! and every attribute value type. The `mjml!` macro re-export will be
-//! added here when the macro lands.
+//! every attribute value type, and the [`mjml!`] macro for declarative
+//! template construction.
+//!
+//! [`mjml!`]: crate::mjml
 //!
 //! ```
 //! use manteau::prelude::*;
@@ -15,6 +17,7 @@
 //!
 //! [`Push`]: crate::templating::push::Push
 
+pub use crate::mjml;
 pub use crate::models::{Address, EmailAddress, MessageId};
 pub use crate::templating::attributes::prelude::*;
 pub use crate::templating::{
