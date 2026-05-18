@@ -35,8 +35,8 @@ impl Text {
     }
   }
 
-  pub fn color(mut self, color: Color) -> Self {
-    self.color = Some(color);
+  pub fn color(mut self, color: impl Into<Color>) -> Self {
+    self.color = Some(color.into());
     self
   }
 
@@ -50,8 +50,8 @@ impl Text {
     self
   }
 
-  pub fn align(mut self, align: Alignment) -> Self {
-    self.align = Some(align);
+  pub fn align(mut self, align: impl Into<Alignment>) -> Self {
+    self.align = Some(align.into());
     self
   }
 
@@ -70,13 +70,33 @@ impl Text {
     self
   }
 
-  pub fn text_transform(mut self, transform: TextTransform) -> Self {
-    self.text_transform = Some(transform);
+  pub fn text_transform(mut self, transform: impl Into<TextTransform>) -> Self {
+    self.text_transform = Some(transform.into());
     self
   }
 
   pub fn padding(mut self, padding: PaddingOptions) -> Self {
     self.padding = padding;
+    self
+  }
+
+  pub fn padding_top(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.t(m.into());
+    self
+  }
+
+  pub fn padding_right(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.r(m.into());
+    self
+  }
+
+  pub fn padding_bottom(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.b(m.into());
+    self
+  }
+
+  pub fn padding_left(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.l(m.into());
     self
   }
 }

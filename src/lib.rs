@@ -40,6 +40,7 @@
 
 pub mod message;
 pub mod models;
+pub mod prelude;
 pub mod render;
 pub mod templating;
 pub mod transport;

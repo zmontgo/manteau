@@ -1,3 +1,11 @@
+//! `mj-button` element.
+//!
+//! Constructor pattern: `Button::new(content, href)` — two required
+//! arguments, one for the text and one for the destination URL. Does not
+//! follow the unified container/text-bodied constructor pattern of the
+//! other elements; consumers (including the eventual `mjml!` macro) must
+//! handle this element's required attributes explicitly.
+
 use crate::{
   render::MjmlWriter,
   templating::{attributes::prelude::*, element::Element},
@@ -33,13 +41,13 @@ impl Button {
     }
   }
 
-  pub fn background_color(mut self, color: Color) -> Self {
-    self.background_color = Some(color);
+  pub fn background_color(mut self, color: impl Into<Color>) -> Self {
+    self.background_color = Some(color.into());
     self
   }
 
-  pub fn color(mut self, color: Color) -> Self {
-    self.color = Some(color);
+  pub fn color(mut self, color: impl Into<Color>) -> Self {
+    self.color = Some(color.into());
     self
   }
 
@@ -63,8 +71,28 @@ impl Button {
     self
   }
 
-  pub fn align(mut self, align: ButtonAlignment) -> Self {
-    self.align = Some(align);
+  pub fn inner_padding_top(mut self, m: impl Into<Measurement>) -> Self {
+    self.inner_padding = self.inner_padding.t(m.into());
+    self
+  }
+
+  pub fn inner_padding_right(mut self, m: impl Into<Measurement>) -> Self {
+    self.inner_padding = self.inner_padding.r(m.into());
+    self
+  }
+
+  pub fn inner_padding_bottom(mut self, m: impl Into<Measurement>) -> Self {
+    self.inner_padding = self.inner_padding.b(m.into());
+    self
+  }
+
+  pub fn inner_padding_left(mut self, m: impl Into<Measurement>) -> Self {
+    self.inner_padding = self.inner_padding.l(m.into());
+    self
+  }
+
+  pub fn align(mut self, align: impl Into<ButtonAlignment>) -> Self {
+    self.align = Some(align.into());
     self
   }
 }

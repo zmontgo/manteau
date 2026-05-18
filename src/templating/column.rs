@@ -41,23 +41,43 @@ impl Column {
     self
   }
 
-  pub fn width(mut self, width: Percentage) -> Self {
-    self.width = Some(width);
+  pub fn width(mut self, width: impl Into<Percentage>) -> Self {
+    self.width = Some(width.into());
     self
   }
 
-  pub fn background_color(mut self, color: Color) -> Self {
-    self.background_color = Some(color);
+  pub fn background_color(mut self, color: impl Into<Color>) -> Self {
+    self.background_color = Some(color.into());
     self
   }
 
-  pub fn border_radius(mut self, border_radius: Measurement) -> Self {
-    self.border_radius = Some(border_radius);
+  pub fn border_radius(mut self, border_radius: impl Into<Measurement>) -> Self {
+    self.border_radius = Some(border_radius.into());
     self
   }
 
   pub fn padding(mut self, padding: PaddingOptions) -> Self {
     self.padding = padding;
+    self
+  }
+
+  pub fn padding_top(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.t(m.into());
+    self
+  }
+
+  pub fn padding_right(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.r(m.into());
+    self
+  }
+
+  pub fn padding_bottom(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.b(m.into());
+    self
+  }
+
+  pub fn padding_left(mut self, m: impl Into<Measurement>) -> Self {
+    self.padding = self.padding.l(m.into());
     self
   }
 }

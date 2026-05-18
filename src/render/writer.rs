@@ -2,7 +2,11 @@
 //!
 //! [`MjmlWriter`] owns the output buffer and handles escaping. Elements never
 //! `format!` raw MJML — they declare tag + attributes + content through
-//! [`ElementWriter`]'s builder methods, which handle the writing.
+//! [`ElementWriter`]'s builder methods, which handle the writing. Escaping
+//! goes through the [`askama_escape`] crate — the same primitive that
+//! powers the askama template ecosystem.
+
+use std::fmt::Write as _;
 
 /// Accumulating buffer that produces an MJML document.
 #[derive(Debug, Default)]
@@ -56,7 +60,9 @@ pub struct ElementWriter<'a> {
 
 impl<'a> ElementWriter<'a> {
   /// Add an attribute if `value` is `Some`. The value's `Display` impl
-  /// produces the attribute text; the writer handles escaping.
+  /// produces the attribute text; the writer handles escaping in a single
+  /// pass via [`askama_escape::MarkupDisplay`] — no intermediate `String`
+  /// allocation between Display formatting and escape.
   pub fn attr<V: std::fmt::Display>(
     self,
     name: &str,
@@ -66,7 +72,13 @@ impl<'a> ElementWriter<'a> {
       self.writer.buf.push(' ');
       self.writer.buf.push_str(name);
       self.writer.buf.push_str("=\"");
-      escape_attr_into(&mut self.writer.buf, &v.to_string());
+      // String's fmt::Write impl is infallible. `MarkupDisplay::new_unsafe`
+      // is the "untrusted source, escape it" path.
+      let _ = write!(
+        self.writer.buf,
+        "{}",
+        askama_escape::MarkupDisplay::new_unsafe(v, askama_escape::Html),
+      );
       self.writer.buf.push('"');
     }
     self
@@ -75,7 +87,12 @@ impl<'a> ElementWriter<'a> {
   /// Close the opening tag, write escaped text, write the closing tag.
   pub fn text(mut self, content: &str) {
     self.writer.buf.push('>');
-    escape_text_into(&mut self.writer.buf, content);
+    // String's fmt::Write impl is infallible.
+    let _ = write!(
+      self.writer.buf,
+      "{}",
+      askama_escape::escape(content, askama_escape::Html),
+    );
     self.writer.buf.push_str("</");
     self.writer.buf.push_str(self.tag);
     self.writer.buf.push('>');
@@ -107,29 +124,6 @@ impl Drop for ElementWriter<'_> {
       // is at least well-formed MJML — the rendered output will be wrong
       // (no content), which surfaces in tests, but it will parse.
       self.writer.buf.push_str("/>");
-    }
-  }
-}
-
-fn escape_attr_into(buf: &mut String, s: &str) {
-  for c in s.chars() {
-    match c {
-      '&' => buf.push_str("&amp;"),
-      '"' => buf.push_str("&quot;"),
-      '<' => buf.push_str("&lt;"),
-      '>' => buf.push_str("&gt;"),
-      _ => buf.push(c),
-    }
-  }
-}
-
-fn escape_text_into(buf: &mut String, s: &str) {
-  for c in s.chars() {
-    match c {
-      '&' => buf.push_str("&amp;"),
-      '<' => buf.push_str("&lt;"),
-      '>' => buf.push_str("&gt;"),
-      _ => buf.push(c),
     }
   }
 }

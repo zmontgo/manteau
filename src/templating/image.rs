@@ -1,3 +1,11 @@
+//! `mj-image` element.
+//!
+//! Constructor pattern: `Image::new(src)` — one required argument for the
+//! source URL. Does not follow the unified container/text-bodied
+//! constructor pattern of the other elements; consumers (including the
+//! eventual `mjml!` macro) must handle this element's required `src`
+//! attribute explicitly.
+
 use crate::{
   render::MjmlWriter,
   templating::{attributes::prelude::*, element::Element},
@@ -28,8 +36,8 @@ impl Image {
     self
   }
 
-  pub fn href(mut self, href: Url) -> Self {
-    self.href = Some(href);
+  pub fn href(mut self, href: impl Into<Url>) -> Self {
+    self.href = Some(href.into());
     self
   }
 
