@@ -232,6 +232,69 @@ fn interp_block() -> Body {
   )
 }
 
+fn text_with_if() -> Body {
+  let logged_in = true;
+  mjml!(
+    <Body><Section><Column>
+      <Text>
+        "Hello, "
+        @if logged_in {
+          "friend"
+        } @else {
+          "stranger"
+        }
+        "!"
+      </Text>
+    </Column></Section></Body>
+  )
+}
+
+fn text_with_for() -> Body {
+  let names = vec!["Alice", "Bob", "Carol"];
+  mjml!(
+    <Body><Section><Column>
+      <Text>
+        "Members: "
+        @for name in &names {
+          {name} " "
+        }
+      </Text>
+    </Column></Section></Body>
+  )
+}
+
+fn text_with_match() -> Body {
+  let kind = 2;
+  mjml!(
+    <Body><Section><Column>
+      <Text>
+        "Status: "
+        @match kind {
+          0 => { "zero" }
+          1 | 2 => { "one or two" }
+          n if n > 10 => { "big" }
+          _ => { "other" }
+        }
+      </Text>
+    </Column></Section></Body>
+  )
+}
+
+fn text_with_while() -> Body {
+  let mut n = 3;
+  mjml!(
+    <Body><Section><Column>
+      <Text>
+        "Countdown:"
+        @while n > 0 {
+          " " {n}
+          {{ n -= 1; "" }}
+        }
+      </Text>
+    </Column></Section></Body>
+  )
+}
+
 fn wrapper_with_sections() -> Body {
   mjml!(
     <Body>
@@ -267,6 +330,34 @@ fn smoke_all_examples_compile_and_construct() {
   let _ = button_with_required_attr();
   let _ = interp_block();
   let _ = wrapper_with_sections();
+  let _ = text_with_if();
+  let _ = text_with_for();
+  let _ = text_with_match();
+  let _ = text_with_while();
+}
+
+#[test]
+fn text_body_if_picks_branch() {
+  let b = text_with_if();
+  assert_eq!(text_at_path(&b, 0).content, "Hello, friend!");
+}
+
+#[test]
+fn text_body_for_concatenates_iterations() {
+  let b = text_with_for();
+  assert_eq!(text_at_path(&b, 0).content, "Members: Alice Bob Carol ");
+}
+
+#[test]
+fn text_body_match_picks_arm() {
+  let b = text_with_match();
+  assert_eq!(text_at_path(&b, 0).content, "Status: one or two");
+}
+
+#[test]
+fn text_body_while_loops() {
+  let b = text_with_while();
+  assert_eq!(text_at_path(&b, 0).content, "Countdown: 3 2 1");
 }
 
 fn text_at_path(b: &Body, depth: usize) -> &Text {

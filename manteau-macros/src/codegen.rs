@@ -272,8 +272,17 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
   }
 }
 
-/// Build the `String` content for a text-bodied element by concatenating
-/// literal pieces and `Display`-formatted interpolations.
+/// Build the `String` content for a text-bodied element.
+///
+/// Three shapes, in order of decreasing simplicity:
+///
+/// 1. Empty body → `String::new()`.
+/// 2. Single literal → emit the `&str` directly.
+/// 3. Anything else (multiple parts, any interp, any control flow) → emit
+///    a block that constructs a `String` by appending each part's
+///    contribution in order. Control-flow parts expand to native Rust
+///    `if`/`for`/`while`/`match` whose branches push fragments onto the
+///    same `__s`.
 fn build_text_content(body: &ElementBody, span: Span) -> TokenStream {
   let parts = match body {
     ElementBody::Text(parts) => parts,
@@ -281,42 +290,101 @@ fn build_text_content(body: &ElementBody, span: Span) -> TokenStream {
   };
 
   if parts.is_empty() {
-    return quote_spanned! { span => "" };
+    return quote_spanned! { span => ::std::string::String::new() };
   }
 
-  // Single literal: emit as a `&str`.
+  // Fast path: single literal → emit as `&str`. The caller wraps it via
+  // `impl Into<String>` on the constructor signature.
   if let [TextPart::Literal(s)] = parts.as_slice() {
     let lit = syn::LitStr::new(s, span);
     return quote_spanned! { span => #lit };
   }
 
-  // Build a `format!` call. Escape `{` and `}` in literal pieces by
-  // doubling them, per `format!` syntax.
-  let mut fmt_str = String::new();
-  let mut args = Vec::<TokenStream>::new();
-  for part in parts {
-    match part {
-      TextPart::Literal(s) => {
-        for c in s.chars() {
-          if c == '{' || c == '}' {
-            fmt_str.push(c);
-            fmt_str.push(c);
-          } else {
-            fmt_str.push(c);
-          }
-        }
-      }
-      TextPart::Interp(expr) => {
-        fmt_str.push_str("{}");
-        let espan = expr_span(expr);
-        args.push(quote_spanned! { espan => #expr });
-      }
+  // General path: build a `String` via push_str / write!. The
+  // `use ::std::fmt::Write as _` brings the trait method `write_fmt`
+  // into scope for `write!` without polluting the caller's namespace.
+  let part_stmts = parts.iter().map(|p| gen_text_part(p, span));
+  quote_spanned! { span =>
+    {
+      use ::std::fmt::Write as _;
+      let mut __s = ::std::string::String::new();
+      #(#part_stmts)*
+      __s
     }
   }
+}
 
-  let lit = syn::LitStr::new(&fmt_str, span);
-  quote_spanned! { span =>
-    ::std::format!(#lit, #(#args),*)
+/// Emit one statement that appends a `TextPart`'s contribution to `__s`.
+/// Recursive across control-flow variants.
+fn gen_text_part(part: &TextPart, span: Span) -> TokenStream {
+  match part {
+    TextPart::Literal(s) => {
+      let lit = syn::LitStr::new(s, span);
+      quote_spanned! { span => __s.push_str(#lit); }
+    }
+    TextPart::Interp(expr) => {
+      let espan = expr_span(expr);
+      quote_spanned! { espan =>
+        ::std::write!(&mut __s, "{}", #expr)
+          .expect("formatting into a String is infallible");
+      }
+    }
+    TextPart::If {
+      cond,
+      then_branch,
+      else_branch,
+    } => {
+      let then_stmts = then_branch.iter().map(|p| gen_text_part(p, span));
+      let else_clause = match else_branch {
+        Some(branch) => {
+          let else_stmts = branch.iter().map(|p| gen_text_part(p, span));
+          quote! {
+            else {
+              #(#else_stmts)*
+            }
+          }
+        }
+        None => quote! {},
+      };
+      quote! {
+        if #cond {
+          #(#then_stmts)*
+        } #else_clause
+      }
+    }
+    TextPart::For { pat, iter, body } => {
+      let body_stmts = body.iter().map(|p| gen_text_part(p, span));
+      quote! {
+        for #pat in #iter {
+          #(#body_stmts)*
+        }
+      }
+    }
+    TextPart::While { cond, body } => {
+      let body_stmts = body.iter().map(|p| gen_text_part(p, span));
+      quote! {
+        while #cond {
+          #(#body_stmts)*
+        }
+      }
+    }
+    TextPart::Match { scrutinee, arms } => {
+      let arm_exprs = arms.iter().map(|arm| {
+        let pat = &arm.pat;
+        let body_stmts = arm.body.iter().map(|p| gen_text_part(p, span));
+        let guard = arm.guard.as_ref().map(|g| quote! { if #g });
+        quote! {
+          #pat #guard => {
+            #(#body_stmts)*
+          }
+        }
+      });
+      quote! {
+        match #scrutinee {
+          #(#arm_exprs),*
+        }
+      }
+    }
   }
 }
 

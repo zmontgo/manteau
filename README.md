@@ -106,18 +106,17 @@ let template = Template::new(mjml! {
 });
 ```
 
-Text-bodied elements (`<Text>`, `<Button>`) accept literal strings and `{expr}` splices only — not control-flow keywords. To branch on text content, splice the result of an outside-the-macro `match` or `if`:
+Text-bodied elements (`<Text>`, `<Button>`) accept the same control-flow forms; each branch's parts are concatenated into the surrounding string:
 
 ```rust
 let template = Template::new(mjml! {
   <Body><Section><Column>
     <Text>
-      {
-        match n {
-          0 => "no items",
-          1 => "one item",
-          _ => "many items",
-        }
+      "Status: "
+      @match n {
+        0 => { "no items" }
+        1 => { "one item" }
+        _ => { "many items" }
       }
     </Text>
   </Column></Section></Body>

@@ -142,13 +142,48 @@ pub struct MatchArm {
   pub body:  Vec<Node>,
 }
 
-/// One part of text-bodied element content. Concatenated via `format!`.
+/// One part of text-bodied element content. At codegen time the parts are
+/// concatenated into a single `String`, either via a fast path when the
+/// content is a single literal, or via a built-up `String` for the
+/// general case (interpolations + control flow).
 #[derive(Debug, Clone)]
 pub enum TextPart {
   /// A literal run of text.
   Literal(String),
   /// `{expr}` interpolation — must be `Display`.
   Interp(Expr),
+  /// `@if cond { ... } [@else { ... }]` inside a text body. Each branch
+  /// contributes its parts to the surrounding string.
+  If {
+    cond:        Expr,
+    then_branch: Vec<TextPart>,
+    else_branch: Option<Vec<TextPart>>,
+  },
+  /// `@for pat in iter { ... }` inside a text body. Each iteration's
+  /// parts are appended to the surrounding string in order.
+  For {
+    pat:  syn::Pat,
+    iter: Expr,
+    body: Vec<TextPart>,
+  },
+  /// `@while cond { ... }` (also handles `@while let pat = expr { ... }`).
+  While { cond: Expr, body: Vec<TextPart> },
+  /// `@match expr { pat => { ... }, ... }` inside a text body. The
+  /// chosen arm's parts contribute to the surrounding string.
+  Match {
+    scrutinee: Expr,
+    arms:      Vec<TextMatchArm>,
+  },
+}
+
+/// A match arm inside a text body. Identical shape to [`MatchArm`] but its
+/// body is `Vec<TextPart>` rather than `Vec<Node>` since the contents are
+/// text fragments, not container children.
+#[derive(Debug, Clone)]
+pub struct TextMatchArm {
+  pub pat:   syn::Pat,
+  pub guard: Option<Expr>,
+  pub body:  Vec<TextPart>,
 }
 
 #[derive(Debug, Clone)]

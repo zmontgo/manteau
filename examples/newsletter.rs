@@ -78,12 +78,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
               color="#9ca3af"
               letter-spacing="0.06em"
             >
-              {
-                match article.category {
-                  Category::Feature => "Feature",
-                  Category::Update  => "Update",
-                  Category::Tip     => "Tip",
-                }
+              @match article.category {
+                Category::Feature => { "Feature" }
+                Category::Update  => { "Update"  }
+                Category::Tip     => { "Tip"     }
               }
             </Text>
             <Text font-size="17px" font-weight={FontWeight::Bold}>

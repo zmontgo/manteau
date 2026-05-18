@@ -336,10 +336,11 @@ fn parse_braced_body(input: ParseStream) -> Result<Vec<Node>> {
   Ok(nodes)
 }
 
-/// Parse the body of a text-bodied element. Following Maud's design, the
-/// only valid body content is:
+/// Parse the body of a text-bodied element. Body content is composed of:
 /// - String literals (`"..."`)
-/// - `{expr}` splices
+/// - `{expr}` splices (must be `Display`)
+/// - `@if` / `@for` / `@while` / `@match` control flow whose branches
+///   contain further text parts
 /// - Closing tag `</Tag>` ends the body
 ///
 /// There is no "bare text" — every literal piece of text must be quoted.
@@ -361,6 +362,10 @@ fn parse_text_body(
          (`<Text>`, `<Button>`)",
       ));
     }
+    if input.peek(Token![@]) {
+      parts.push(parse_text_control_flow(input)?);
+      continue;
+    }
     if input.peek(token::Brace) {
       let content;
       braced!(content in input);
@@ -374,11 +379,129 @@ fn parse_text_body(
       continue;
     }
     return Err(input.error(
-      "expected string literal `\"...\"` or `{expr}` splice in text body; \
-       bare text is not supported — wrap all literal text in double quotes",
+      "expected string literal `\"...\"`, `{expr}` splice, or \
+       `@if`/`@for`/`@while`/`@match` control flow in text body; bare \
+       text is not supported — wrap all literal text in double quotes",
     ));
   }
 
+  Ok(parts)
+}
+
+/// `@if` / `@for` / `@while` / `@match` inside a text body. Mirrors the
+/// container-body control-flow parser but recurses into
+/// `parse_text_braced_body` so the branch contents are `TextPart`s.
+fn parse_text_control_flow(input: ParseStream) -> Result<TextPart> {
+  let at: Token![@] = input.parse()?;
+  if input.peek(Token![if]) {
+    let _: Token![if] = input.parse()?;
+    let cond: Expr = Expr::parse_without_eager_brace(input)?;
+    let then_branch = parse_text_braced_body(input)?;
+    let else_branch = if input.peek(Token![@]) {
+      let fork = input.fork();
+      let _: Token![@] = fork.parse()?;
+      if fork.peek(Token![else]) {
+        let _: Token![@] = input.parse()?;
+        let _: Token![else] = input.parse()?;
+        Some(parse_text_braced_body(input)?)
+      } else {
+        None
+      }
+    } else {
+      None
+    };
+    return Ok(TextPart::If {
+      cond,
+      then_branch,
+      else_branch,
+    });
+  }
+  if input.peek(Token![for]) {
+    let _: Token![for] = input.parse()?;
+    let pat = Pat::parse_single(input)?;
+    let _: Token![in] = input.parse()?;
+    let iter: Expr = Expr::parse_without_eager_brace(input)?;
+    let body = parse_text_braced_body(input)?;
+    return Ok(TextPart::For { pat, iter, body });
+  }
+  if input.peek(Token![while]) {
+    let _: Token![while] = input.parse()?;
+    let cond: Expr = if input.peek(Token![let]) {
+      let let_token: Token![let] = input.parse()?;
+      let pat = Pat::parse_multi_with_leading_vert(input)?;
+      let eq_token: Token![=] = input.parse()?;
+      let scrut: Expr = Expr::parse_without_eager_brace(input)?;
+      Expr::Let(syn::ExprLet {
+        attrs: Vec::new(),
+        let_token,
+        pat: Box::new(pat),
+        eq_token,
+        expr: Box::new(scrut),
+      })
+    } else {
+      Expr::parse_without_eager_brace(input)?
+    };
+    let body = parse_text_braced_body(input)?;
+    return Ok(TextPart::While { cond, body });
+  }
+  if input.peek(Token![match]) {
+    let _: Token![match] = input.parse()?;
+    let scrutinee: Expr = Expr::parse_without_eager_brace(input)?;
+    let content;
+    braced!(content in input);
+    let mut arms = Vec::new();
+    while !content.is_empty() {
+      let pat = Pat::parse_multi_with_leading_vert(&content)?;
+      let guard = if content.peek(Token![if]) {
+        let _: Token![if] = content.parse()?;
+        let g: Expr = Expr::parse_without_eager_brace(&content)?;
+        Some(g)
+      } else {
+        None
+      };
+      let _: Token![=>] = content.parse()?;
+      let body = parse_text_braced_body(&content)?;
+      let _ = content.parse::<Token![,]>().ok();
+      arms.push(TextMatchArm { pat, guard, body });
+    }
+    return Ok(TextPart::Match { scrutinee, arms });
+  }
+  Err(syn::Error::new(
+    at.span,
+    "expected `@if`, `@for`, `@while`, or `@match` after `@`",
+  ))
+}
+
+fn parse_text_braced_body(input: ParseStream) -> Result<Vec<TextPart>> {
+  let content;
+  braced!(content in input);
+  let mut parts = Vec::new();
+  while !content.is_empty() {
+    if content.peek(Token![<]) {
+      return Err(content.error(
+        "nested elements are not allowed inside text-bodied control flow",
+      ));
+    }
+    if content.peek(Token![@]) {
+      parts.push(parse_text_control_flow(&content)?);
+      continue;
+    }
+    if content.peek(token::Brace) {
+      let inner;
+      braced!(inner in content);
+      let expr: Expr = inner.parse()?;
+      parts.push(TextPart::Interp(expr));
+      continue;
+    }
+    if content.peek(LitStr) {
+      let lit: LitStr = content.parse()?;
+      parts.push(TextPart::Literal(lit.value()));
+      continue;
+    }
+    return Err(content.error(
+      "expected string literal, `{expr}`, or `@if`/`@for`/`@while`/`@match`",
+    ));
+  }
   Ok(parts)
 }
 
