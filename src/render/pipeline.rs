@@ -50,13 +50,13 @@ pub fn render_plaintext(html: &str) -> Result<String, RenderError> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::templating::{Body, Column, Section, Template, Text};
+  use crate::prelude::*;
 
   fn minimal_template() -> Template {
     Template::new(
-      Body::new().push_section(
+      Body::new().push(
         Section::new()
-          .push_column(Column::new().push(Text::new("Hello, world!"))),
+          .push(Column::new().push(Text::new("Hello, world!"))),
       ),
     )
   }

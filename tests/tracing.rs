@@ -5,10 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use manteau::{
-  Address, Message,
-  templating::{Body, Column, Section, Template, Text},
-};
+use manteau::{Message, prelude::*};
 use tracing::{
   Subscriber,
   field::{Field, Visit},
@@ -64,8 +61,8 @@ impl Visit for FieldVisitor {
 }
 
 fn make_message(subject: &str) -> Message {
-  let template = Template::new(Body::new().push_section(
-    Section::new().push_column(Column::new().push(Text::new("Hi"))),
+  let template = Template::new(Body::new().push(
+    Section::new().push(Column::new().push(Text::new("Hi"))),
   ));
 
   Message::new(

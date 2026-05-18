@@ -47,40 +47,11 @@ impl Body {
   pub fn new() -> Self { Self::default() }
 
   /// Replace the children with a fresh `Vec` of sections. For mixed
-  /// section/wrapper trees use [`push_section`] and [`push_wrapper`].
-  ///
-  /// [`push_section`]: Self::push_section
-  /// [`push_wrapper`]: Self::push_wrapper
+  /// section/wrapper trees use [`Push::push`] from
+  /// [`crate::templating::push::Push`] (re-exported in
+  /// [`crate::prelude`]).
   pub fn sections(mut self, sections: Vec<Section>) -> Self {
     self.children = sections.into_iter().map(BodyChild::Section).collect();
-    self
-  }
-
-  /// Append one section. The runtime-modification path — used to
-  /// conditionally tack a section on (a coupon offer in a welcome email,
-  /// say) without rebuilding the whole tree.
-  ///
-  /// ```
-  /// # use manteau::templating::{Body, Section};
-  /// # let user_coupon_eligible = true;
-  /// # let welcome = Section::new();
-  /// # let coupon = Section::new();
-  /// let mut body = Body::new().push_section(welcome);
-  /// if user_coupon_eligible {
-  ///   body = body.push_section(coupon);
-  /// }
-  /// ```
-  pub fn push_section(mut self, section: Section) -> Self {
-    self.children.push(BodyChild::Section(section));
-    self
-  }
-
-  /// Append one wrapper — a section-of-sections container that applies
-  /// shared styling (background, padding, border-radius) to the group of
-  /// sections inside it. See [`Wrapper`] for the canonical "card around
-  /// several sections" use case.
-  pub fn push_wrapper(mut self, wrapper: Wrapper) -> Self {
-    self.children.push(BodyChild::Wrapper(wrapper));
     self
   }
 

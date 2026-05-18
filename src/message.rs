@@ -59,7 +59,7 @@ impl Message {
   }
 
   /// Append one address to `cc`. Mirror of [`Message::cc`] for the
-  /// runtime-conditional pattern (parallel to `push_section` on `Body`).
+  /// runtime-conditional pattern (parallel to `Push::push` on `Body`).
   pub fn push_cc(mut self, addr: Address) -> Self {
     self.cc.push(addr);
     self

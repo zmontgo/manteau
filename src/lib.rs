@@ -10,11 +10,11 @@
 //!
 //! ```
 //! # use manteau::{Address, Message, MockTransport, Transport};
-//! # use manteau::templating::{Body, Column, Section, Template, Text};
+//! # use manteau::prelude::*;
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
 //! # rt.block_on(async {
-//! let template = Template::new(Body::new().push_section(
-//!   Section::new().push_column(Column::new().push(Text::new("Hello, world!"))),
+//! let template = Template::new(Body::new().push(
+//!   Section::new().push(Column::new().push(Text::new("Hello, world!"))),
 //! ));
 //!
 //! let msg = Message::new(

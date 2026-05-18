@@ -26,21 +26,6 @@ impl Column {
     self
   }
 
-  /// Append one child. The runtime-modification path:
-  ///
-  /// ```
-  /// # use manteau::templating::{Column, Text};
-  /// let mut col = Column::new().push(Text::new("Welcome!"));
-  /// # let coupon_eligible = true;
-  /// if coupon_eligible {
-  ///   col = col.push(Text::new("Here's a coupon"));
-  /// }
-  /// ```
-  pub fn push(mut self, child: impl Into<Block>) -> Self {
-    self.children.push(child.into());
-    self
-  }
-
   pub fn width(mut self, width: impl Into<Percentage>) -> Self {
     self.width = Some(width.into());
     self

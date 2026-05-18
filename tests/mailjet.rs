@@ -5,8 +5,7 @@
 //! whole test binary is skipped without the feature.
 
 use manteau::{
-  Address, MailjetTransport, Message, Transport,
-  templating::{Body, Column, Section, Template, Text},
+  MailjetTransport, Message, Transport, prelude::*,
   transport::TransportFailure,
 };
 use wiremock::{
@@ -15,8 +14,8 @@ use wiremock::{
 };
 
 fn make_message() -> Message {
-  let template = Template::new(Body::new().push_section(
-    Section::new().push_column(Column::new().push(Text::new("Hi!"))),
+  let template = Template::new(Body::new().push(
+    Section::new().push(Column::new().push(Text::new("Hi!"))),
   ));
 
   Message::new(

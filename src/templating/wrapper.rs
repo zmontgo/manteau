@@ -18,13 +18,13 @@ use crate::{
 /// — both lose something the wrapper preserves.
 ///
 /// ```
-/// # use manteau::templating::{Body, Column, Section, Text, Wrapper};
-/// # use manteau::templating::attributes::prelude::*;
+/// use manteau::prelude::*;
+///
 /// let card = Wrapper::new()
 ///   .background_color(Color::hex(0xffffff))
 ///   .border_radius(Measurement::Pixels(Pixels::new(8)))
-///   .push_section(Section::new().push_column(Column::new().push(Text::new("Hello"))));
-/// let _body = Body::new().push_wrapper(card);
+///   .push(Section::new().push(Column::new().push(Text::new("Hello"))));
+/// let _body = Body::new().push(card);
 /// ```
 #[non_exhaustive]
 #[derive(Debug, Clone, Default)]
@@ -40,11 +40,6 @@ impl Wrapper {
 
   pub fn sections(mut self, sections: Vec<Section>) -> Self {
     self.sections = sections;
-    self
-  }
-
-  pub fn push_section(mut self, section: Section) -> Self {
-    self.sections.push(section);
     self
   }
 
