@@ -53,3 +53,13 @@ wiremock           = "0.6"
 [[test]]
 name             = "mailjet"
 required-features = ["mailjet"]
+
+[[example]]
+name             = "welcome"
+required-features = ["stdout"]
+
+[[example]]
+name = "newsletter"
+
+[[example]]
+name = "builder"
