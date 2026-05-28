@@ -15,14 +15,15 @@
 //! use manteau::prelude::*;
 //!
 //! let body = Body::new()
-//!   .push(Section::new()
-//!     .push(Column::new()
-//!       .push(Text::new("Hello"))));
+//!   .push(Section::new().push(Column::new().push(Text::new("Hello"))));
 //! # let _ = body;
 //! ```
 
 use crate::templating::{
-  block::Block, body::Body, body::BodyChild, column::Column, section::Section,
+  block::Block,
+  body::{Body, BodyChild},
+  column::Column,
+  section::Section,
   wrapper::Wrapper,
 };
 

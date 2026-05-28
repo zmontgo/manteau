@@ -47,8 +47,8 @@ impl Body {
   pub fn new() -> Self { Self::default() }
 
   /// Replace the children with a fresh `Vec` of sections. For mixed
-  /// section/wrapper trees use [`Push::push`] from
-  /// [`crate::templating::push::Push`] (re-exported in
+  /// section/wrapper trees use
+  /// [`Push::push`](crate::templating::push::Push::push) (re-exported in
   /// [`crate::prelude`]).
   pub fn sections(mut self, sections: Vec<Section>) -> Self {
     self.children = sections.into_iter().map(BodyChild::Section).collect();

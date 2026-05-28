@@ -10,8 +10,7 @@
 //! cargo run --example newsletter
 //! ```
 
-use manteau::prelude::*;
-use manteau::{Message, MockTransport, Transport};
+use manteau::{Message, MockTransport, Transport, prelude::*};
 
 #[derive(Clone)]
 struct Article {

@@ -53,12 +53,9 @@ mod tests {
   use crate::prelude::*;
 
   fn minimal_template() -> Template {
-    Template::new(
-      Body::new().push(
-        Section::new()
-          .push(Column::new().push(Text::new("Hello, world!"))),
-      ),
-    )
+    Template::new(Body::new().push(
+      Section::new().push(Column::new().push(Text::new("Hello, world!"))),
+    ))
   }
 
   #[test]

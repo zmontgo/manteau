@@ -76,8 +76,7 @@ fn try_parse_color(s: &str, span: Span) -> Result<Option<TokenStream>> {
       return Err(syn::Error::new(
         span,
         format!(
-          "invalid color `{}`: expected `#rgb` or `#rrggbb`, got {} hex \
-           digits",
+          "invalid color `{}`: expected `#rgb` or `#rrggbb`, got {} hex digits",
           s,
           hex.len()
         ),
@@ -144,10 +143,7 @@ fn try_parse_url(s: &str, span: Span) -> Result<Option<TokenStream>> {
   }
 
   if let Err(e) = url::Url::parse(s) {
-    return Err(syn::Error::new(
-      span,
-      format!("invalid URL `{}`: {}", s, e),
-    ));
+    return Err(syn::Error::new(span, format!("invalid URL `{}`: {}", s, e)));
   }
 
   let lit = syn::LitStr::new(s, span);

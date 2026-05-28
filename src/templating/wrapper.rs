@@ -1,8 +1,6 @@
 use crate::{
   render::MjmlWriter,
-  templating::{
-    attributes::prelude::*, element::Element, section::Section,
-  },
+  templating::{attributes::prelude::*, element::Element, section::Section},
 };
 
 /// `mj-wrapper` — a section-of-sections container. Wraps multiple

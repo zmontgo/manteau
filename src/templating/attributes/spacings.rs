@@ -53,8 +53,11 @@ impl PaddingOptions {
   }
 
   pub fn top(&self) -> Option<&Measurement> { self.top.as_ref() }
+
   pub fn bottom(&self) -> Option<&Measurement> { self.bottom.as_ref() }
+
   pub fn left(&self) -> Option<&Measurement> { self.left.as_ref() }
+
   pub fn right(&self) -> Option<&Measurement> { self.right.as_ref() }
 
   /// `true` when no side has been set. Elements use this to decide whether

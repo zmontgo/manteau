@@ -13,9 +13,10 @@
 //! # use manteau::prelude::*;
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
 //! # rt.block_on(async {
-//! let template = Template::new(Body::new().push(
-//!   Section::new().push(Column::new().push(Text::new("Hello, world!"))),
-//! ));
+//! let template =
+//!   Template::new(Body::new().push(
+//!     Section::new().push(Column::new().push(Text::new("Hello, world!"))),
+//!   ));
 //!
 //! let msg = Message::new(
 //!   Address::new("hello@example.com".parse().unwrap()),
@@ -34,6 +35,8 @@
 //!
 //! - `mailjet` — `MailjetTransport`, posts to Mailjet's v3.1 send API. Implies
 //!   `tls-rustls`.
+//! - `cloudflare` — `CloudflareTransport`, posts to Cloudflare's Email Sending
+//!   REST API. Implies `tls-rustls`.
 //! - `stdout` — `StdoutTransport`, prints to stdout. For local development.
 //! - `tls-rustls` / `tls-native` — selects the TLS backend for the HTTP
 //!   transports. `tls-rustls` is the default chosen by `mailjet`.
@@ -51,6 +54,11 @@ pub use message::Message;
 pub use models::{Address, EmailAddress, EmailAddressError, MessageId};
 pub use render::{RenderError, RenderErrorKind, Rendered};
 pub use transport::{Receipt, Transport, TransportFailure};
+#[cfg(feature = "cloudflare")]
+pub use transports::cloudflare::{
+  BounceReport, CloudflareConfig, CloudflareError, CloudflareErrorKind,
+  CloudflareReceipt, CloudflareTransport,
+};
 #[cfg(feature = "mailjet")]
 pub use transports::mailjet::{
   MailjetConfig, MailjetError, MailjetErrorKind, MailjetReceipt,

@@ -17,8 +17,11 @@
 //! ```
 
 use proc_macro2::Span;
-use syn::parse::{Parse, ParseStream};
-use syn::{Expr, Ident, LitStr, Pat, Result, Token, braced, token};
+use syn::{
+  Expr, Ident, LitStr, Pat, Result, Token, braced,
+  parse::{Parse, ParseStream},
+  token,
+};
 
 use crate::ast::*;
 
@@ -150,9 +153,10 @@ fn parse_attr(input: ParseStream) -> Result<Attr> {
     let expr: Expr = content.parse()?;
     AttrValue::Expr(expr)
   } else {
-    return Err(input.error(
-      "expected string literal or `{expression}` for attribute value",
-    ));
+    return Err(
+      input
+        .error("expected string literal or `{expression}` for attribute value"),
+    );
   };
 
   Ok(Attr {
@@ -339,8 +343,8 @@ fn parse_braced_body(input: ParseStream) -> Result<Vec<Node>> {
 /// Parse the body of a text-bodied element. Body content is composed of:
 /// - String literals (`"..."`)
 /// - `{expr}` splices (must be `Display`)
-/// - `@if` / `@for` / `@while` / `@match` control flow whose branches
-///   contain further text parts
+/// - `@if` / `@for` / `@while` / `@match` control flow whose branches contain
+///   further text parts
 /// - Closing tag `</Tag>` ends the body
 ///
 /// There is no "bare text" — every literal piece of text must be quoted.
@@ -380,8 +384,8 @@ fn parse_text_body(
     }
     return Err(input.error(
       "expected string literal `\"...\"`, `{expr}` splice, or \
-       `@if`/`@for`/`@while`/`@match` control flow in text body; bare \
-       text is not supported — wrap all literal text in double quotes",
+       `@if`/`@for`/`@while`/`@match` control flow in text body; bare text is \
+       not supported — wrap all literal text in double quotes",
     ));
   }
 

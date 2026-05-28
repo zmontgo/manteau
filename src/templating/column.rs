@@ -36,7 +36,10 @@ impl Column {
     self
   }
 
-  pub fn border_radius(mut self, border_radius: impl Into<Measurement>) -> Self {
+  pub fn border_radius(
+    mut self,
+    border_radius: impl Into<Measurement>,
+  ) -> Self {
     self.border_radius = Some(border_radius.into());
     self
   }

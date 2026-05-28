@@ -10,8 +10,7 @@
 //! cargo run --example welcome --features stdout
 //! ```
 
-use manteau::prelude::*;
-use manteau::{Message, StdoutTransport, Transport};
+use manteau::{Message, StdoutTransport, Transport, prelude::*};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

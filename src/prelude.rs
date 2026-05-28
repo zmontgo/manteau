@@ -10,17 +10,17 @@
 //! ```
 //! use manteau::prelude::*;
 //!
-//! let _ = Body::new().push(
-//!   Section::new().push(Column::new().push(Text::new("Hi"))),
-//! );
+//! let _ =
+//!   Body::new().push(Section::new().push(Column::new().push(Text::new("Hi"))));
 //! ```
 //!
 //! [`Push`]: crate::templating::push::Push
 
-pub use crate::mjml;
-pub use crate::models::{Address, EmailAddress, MessageId};
-pub use crate::templating::attributes::prelude::*;
-pub use crate::templating::{
-  Block, Body, BodyChild, Button, Column, Element, Image, Push, Section,
-  Template, Text, Wrapper,
+pub use crate::{
+  mjml,
+  models::{Address, EmailAddress, MessageId},
+  templating::{
+    Block, Body, BodyChild, Button, Column, Element, Image, Push, Section,
+    Template, Text, Wrapper, attributes::prelude::*,
+  },
 };

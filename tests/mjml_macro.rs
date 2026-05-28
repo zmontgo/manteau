@@ -6,8 +6,7 @@
 //! (`::manteau::prelude::*`) resolve in this binary the same way they
 //! would in any downstream crate.
 
-use manteau::mjml;
-use manteau::prelude::*;
+use manteau::{mjml, prelude::*};
 
 fn basic() -> Body { mjml!(<Body></Body>) }
 

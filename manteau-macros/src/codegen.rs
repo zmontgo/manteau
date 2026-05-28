@@ -9,8 +9,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::Ident;
 
-use crate::ast::*;
-use crate::values;
+use crate::{ast::*, values};
 
 /// Top-level entry. The root is always a single element.
 pub fn generate(root: &Node) -> TokenStream {
@@ -25,8 +24,7 @@ pub fn generate(root: &Node) -> TokenStream {
 /// the element's typed value.
 fn gen_element(el: &Element) -> TokenStream {
   let ty_ident = Ident::new(el.kind.type_name(), el.tag_span);
-  let ty_path =
-    quote_spanned! { el.tag_span => ::manteau::prelude::#ty_ident };
+  let ty_path = quote_spanned! { el.tag_span => ::manteau::prelude::#ty_ident };
 
   // Split attributes into "required constructor arg" and "setters".
   let (required_attr, setter_attrs) = split_required(el);
@@ -164,23 +162,15 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
     Node::Element(child) => {
       let child_expr = gen_element(child);
       let span = child.tag_span;
-      rebind(
-        ctx,
-        span,
-        quote_spanned! { span =>
-          ::manteau::prelude::Push::push(__el, #child_expr)
-        },
-      )
+      rebind(ctx, span, quote_spanned! { span =>
+        ::manteau::prelude::Push::push(__el, #child_expr)
+      })
     }
     Node::Interp(expr) | Node::Raw(expr) => {
       let span = expr_span(expr);
-      rebind(
-        ctx,
-        span,
-        quote_spanned! { span =>
-          ::manteau::prelude::Push::push(__el, #expr)
-        },
-      )
+      rebind(ctx, span, quote_spanned! { span =>
+        ::manteau::prelude::Push::push(__el, #expr)
+      })
     }
     Node::If {
       cond,
@@ -278,11 +268,11 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
 ///
 /// 1. Empty body → `String::new()`.
 /// 2. Single literal → emit the `&str` directly.
-/// 3. Anything else (multiple parts, any interp, any control flow) → emit
-///    a block that constructs a `String` by appending each part's
-///    contribution in order. Control-flow parts expand to native Rust
-///    `if`/`for`/`while`/`match` whose branches push fragments onto the
-///    same `__s`.
+/// 3. Anything else (multiple parts, any interp, any control flow) → emit a
+///    block that constructs a `String` by appending each part's contribution in
+///    order. Control-flow parts expand to native Rust
+///    `if`/`for`/`while`/`match` whose branches push fragments onto the same
+///    `__s`.
 fn build_text_content(body: &ElementBody, span: Span) -> TokenStream {
   let parts = match body {
     ElementBody::Text(parts) => parts,
@@ -388,6 +378,4 @@ fn gen_text_part(part: &TextPart, span: Span) -> TokenStream {
   }
 }
 
-fn expr_span(expr: &syn::Expr) -> Span {
-  syn::spanned::Spanned::span(expr)
-}
+fn expr_span(expr: &syn::Expr) -> Span { syn::spanned::Spanned::span(expr) }

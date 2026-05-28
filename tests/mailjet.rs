@@ -5,8 +5,7 @@
 //! whole test binary is skipped without the feature.
 
 use manteau::{
-  MailjetTransport, Message, Transport, prelude::*,
-  transport::TransportFailure,
+  MailjetTransport, Message, Transport, prelude::*, transport::TransportFailure,
 };
 use wiremock::{
   Mock, MockServer, ResponseTemplate,
@@ -14,9 +13,9 @@ use wiremock::{
 };
 
 fn make_message() -> Message {
-  let template = Template::new(Body::new().push(
-    Section::new().push(Column::new().push(Text::new("Hi!"))),
-  ));
+  let template = Template::new(
+    Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
+  );
 
   Message::new(
     Address::new("from@example.com".parse().unwrap()),

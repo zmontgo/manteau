@@ -130,9 +130,15 @@ pub enum Node {
   /// `@while cond { ... }` — also handles `@while let pat = expr { ... }`
   /// since `Expr::While` would consume the braced body; we parse the
   /// guard with `Expr::parse_without_eager_brace` instead.
-  While { cond: Expr, body: Vec<Node> },
+  While {
+    cond: Expr,
+    body: Vec<Node>,
+  },
   /// `@match expr { pat => { ... }, ... }`
-  Match { scrutinee: Expr, arms: Vec<MatchArm> },
+  Match {
+    scrutinee: Expr,
+    arms:      Vec<MatchArm>,
+  },
 }
 
 #[derive(Debug, Clone)]
