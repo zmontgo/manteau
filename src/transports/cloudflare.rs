@@ -12,6 +12,7 @@
 //! failures by category. See the [`crate::transport`] module docs for the
 //! error pattern.
 
+use std::borrow::Cow;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -191,6 +192,39 @@ impl CloudflareError {
   pub fn bounce_report(&self) -> Option<&BounceReport> {
     self.source.downcast_ref::<BounceReport>()
   }
+
+  /// Cloudflare's numeric error code, when the failure carried one — a non-2xx
+  /// HTTP response whose body parsed, or a 200 with `success:false`. `None` for
+  /// transport-level failures (network, render) that never reached Cloudflare
+  /// or produced no code.
+  ///
+  /// This is a *diagnostic*: retry classification keys off the HTTP status (see
+  /// [`TransportFailure`]), not this code. The documented code table is not
+  /// exhaustive, so treat unrecognized codes as opaque.
+  pub fn provider_code(&self) -> Option<i64> {
+    if let Some(api) = self.source.downcast_ref::<ApiRejection>() {
+      return Some(api.code);
+    }
+    self
+      .source
+      .downcast_ref::<HttpRejection>()
+      .and_then(|h| h.code)
+  }
+
+  /// Cloudflare's machine-readable error message (e.g.
+  /// `email.sending.error.email.invalid`), paired with [`provider_code`]. See
+  /// that method for when it is present.
+  ///
+  /// [`provider_code`]: CloudflareError::provider_code
+  pub fn provider_message(&self) -> Option<&str> {
+    if let Some(api) = self.source.downcast_ref::<ApiRejection>() {
+      return Some(&api.message);
+    }
+    self
+      .source
+      .downcast_ref::<HttpRejection>()
+      .and_then(|h| h.message.as_deref())
+  }
 }
 
 #[non_exhaustive]
@@ -293,12 +327,30 @@ impl TransportFailure for CloudflareError {
 }
 
 // Source error capturing the HTTP status and response body — held behind
-// CloudflareError's `source` so the body survives in the Display chain.
+// CloudflareError's `source` so the body survives in the Display chain. When
+// the body parsed as Cloudflare's error envelope, the first error's `code` and
+// `message` are split out so `provider_code`/`provider_message` can surface
+// them without re-parsing.
 #[derive(Debug, thiserror::Error)]
 #[error("status {status}: {body}")]
 struct HttpRejection {
-  status: u16,
-  body:   String,
+  status:  u16,
+  code:    Option<i64>,
+  message: Option<String>,
+  body:    String,
+}
+
+// Pull the first `{code, message}` out of a Cloudflare error envelope body.
+// Returns `(None, None)` when the body isn't the expected JSON shape (e.g. a
+// plain-text gateway error), so a non-JSON body degrades gracefully.
+fn parse_error_envelope(body: &str) -> (Option<i64>, Option<String>) {
+  match serde_json::from_str::<ApiResponse>(body) {
+    Ok(parsed) => match parsed.errors.into_iter().next() {
+      Some(e) => (Some(e.code), Some(e.message)),
+      None => (None, None),
+    },
+    Err(_) => (None, None),
+  }
 }
 
 // Source error for a 200 response that reported application-level failure.
@@ -329,6 +381,73 @@ pub struct BounceReport {
   pub permanent_bounces: Vec<String>,
 }
 
+// ---------- Header encoding ----------
+
+/// Encode an RFC 5322 header value (subject, address display name) as one or
+/// more RFC 2047 "Q" encoded-words when it contains anything outside printable
+/// US-ASCII. Pure printable-ASCII values pass through borrowed (no allocation).
+///
+/// Cloudflare's `/email/sending/send` endpoint places `subject` verbatim into
+/// the Subject header, which is ASCII-only unless RFC 2047-encoded — a raw
+/// non-ASCII byte (e.g. an em-dash) is rejected with `10202
+/// email.sending.error.email.invalid`. The HTML/text *bodies* are MIME parts
+/// with their own charset and are deliberately left untouched.
+///
+/// The single "not printable ASCII" predicate also closes CR/LF header
+/// injection: any control byte forces encoding, so a newline in a caller-
+/// supplied subject becomes `=0D=0A` rather than reaching the raw header.
+fn encode_header_word(value: &str) -> Cow<'_, str> {
+  // Fast path: emit verbatim when every byte is already printable ASCII.
+  if value.bytes().all(|b| (0x20..=0x7e).contains(&b)) {
+    return Cow::Borrowed(value);
+  }
+
+  const PREFIX: &str = "=?UTF-8?Q?";
+  const SUFFIX: &str = "?=";
+  // RFC 2047 §2: an encoded-word is at most 75 characters in total.
+  const MAX_TEXT: usize = 75 - PREFIX.len() - SUFFIX.len(); // 63
+
+  let mut words: Vec<String> = Vec::new();
+  let mut cur = String::new();
+
+  for ch in value.chars() {
+    // Encode one whole character atomically so no encoded-word ever splits a
+    // multibyte sequence — each word must decode to valid UTF-8 (RFC 2047 §5).
+    let mut piece = String::new();
+    match ch {
+      ' ' => piece.push('_'),
+      // Printable ASCII may appear literally in Q-text, except the three
+      // characters that always carry meaning there: '=', '?', '_'.
+      c if (0x20..=0x7e).contains(&(c as u32)) && !matches!(c, '=' | '?' | '_') => {
+        piece.push(c);
+      }
+      c => {
+        let mut buf = [0u8; 4];
+        for b in c.encode_utf8(&mut buf).as_bytes() {
+          piece.push_str(&format!("={b:02X}"));
+        }
+      }
+    }
+    if cur.len() + piece.len() > MAX_TEXT {
+      words.push(std::mem::take(&mut cur));
+    }
+    cur.push_str(&piece);
+  }
+  if !cur.is_empty() {
+    words.push(cur);
+  }
+
+  // Adjacent encoded-words are separated by a single space; decoders drop the
+  // whitespace between them (RFC 2047 §6.2). Cloudflare folds the header.
+  Cow::Owned(
+    words
+      .into_iter()
+      .map(|w| format!("{PREFIX}{w}{SUFFIX}"))
+      .collect::<Vec<_>>()
+      .join(" "),
+  )
+}
+
 // ---------- Serialization wire shape (private to this module) ----------
 
 #[derive(Serialize)]
@@ -341,7 +460,9 @@ struct Payload<'a> {
   cc:      Vec<&'a str>,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   bcc:     Vec<&'a str>,
-  subject: &'a str,
+  // RFC 2047-encoded when non-ASCII (see `encode_header_word`); borrowed
+  // otherwise. The bodies below are MIME parts and stay raw UTF-8.
+  subject: Cow<'a, str>,
   html:    &'a str,
   text:    &'a str,
 }
@@ -352,14 +473,16 @@ struct Payload<'a> {
 struct AddrObj<'a> {
   address: &'a str,
   #[serde(skip_serializing_if = "Option::is_none")]
-  name:    Option<&'a str>,
+  name:    Option<Cow<'a, str>>,
 }
 
 impl<'a> From<&'a Address> for AddrObj<'a> {
   fn from(a: &'a Address) -> Self {
     AddrObj {
       address: a.email.as_str(),
-      name:    a.name.as_deref(),
+      // The display name is an RFC 5322 phrase — same header-encoding rule
+      // as the subject.
+      name:    a.name.as_deref().map(encode_header_word),
     }
   }
 }
@@ -422,7 +545,7 @@ impl Transport for CloudflareTransport {
       to:      message.to.iter().map(|a| a.email.as_str()).collect(),
       cc:      message.cc.iter().map(|a| a.email.as_str()).collect(),
       bcc:     message.bcc.iter().map(|a| a.email.as_str()).collect(),
-      subject: &message.subject,
+      subject: encode_header_word(&message.subject),
       html:    &rendered.html,
       text:    &rendered.text,
     };
@@ -448,8 +571,11 @@ impl Transport for CloudflareTransport {
       let status_u16 = status.as_u16();
       let retry_after = parse_retry_after(&resp);
       let body = resp.text().await.unwrap_or_default();
+      let (code, message) = parse_error_envelope(&body);
       let rejection = HttpRejection {
         status: status_u16,
+        code,
+        message,
         body,
       };
       let kind = match status_u16 {
@@ -531,6 +657,62 @@ mod tests {
     CloudflareError {
       kind,
       source: "test".into(),
+    }
+  }
+
+  // ---- Header encoding (RFC 2047) ----
+
+  #[test]
+  fn ascii_subject_passes_through_borrowed() {
+    let out = encode_header_word("Plain ASCII subject");
+    assert!(matches!(out, Cow::Borrowed(_)));
+    assert_eq!(out, "Plain ASCII subject");
+  }
+
+  #[test]
+  fn em_dash_subject_is_q_encoded() {
+    // The xodus welcome-email case: U+2014 em-dash → =E2=80=94, spaces → '_'.
+    let out = encode_header_word("A — B");
+    assert_eq!(out, "=?UTF-8?Q?A_=E2=80=94_B?=");
+  }
+
+  #[test]
+  fn non_ascii_output_is_pure_ascii() {
+    // Whatever the input, the wire value must be ASCII so the Subject header
+    // is valid — this is the property Cloudflare rejected (10202) without.
+    let out = encode_header_word("Café — Zürich — São Paulo");
+    assert!(out.is_ascii(), "encoded header must be ASCII: {out}");
+  }
+
+  #[test]
+  fn q_specials_are_escaped_when_encoding() {
+    // '=', '?', '_' must be escaped inside an encoded-word; they only appear
+    // here because the non-ASCII 'é' forces the whole value to encode.
+    let out = encode_header_word("=?_é");
+    assert_eq!(out, "=?UTF-8?Q?=3D=3F=5F=C3=A9?=");
+  }
+
+  #[test]
+  fn control_bytes_force_encoding_no_raw_crlf() {
+    // Header-injection guard: a CR/LF in a caller-supplied subject becomes
+    // =0D=0A rather than reaching the raw header.
+    let out = encode_header_word("Subject\r\nBcc: evil@example.com");
+    assert!(out.is_ascii());
+    assert!(!out.contains('\r') && !out.contains('\n'));
+    assert!(out.contains("=0D=0A"));
+  }
+
+  #[test]
+  fn long_value_splits_into_words_within_75_chars() {
+    // A long non-ASCII value must split into multiple encoded-words, each
+    // ≤ 75 chars, none splitting a multibyte character.
+    let input = "é".repeat(200);
+    let out = encode_header_word(&input);
+    let words: Vec<&str> = out.split(' ').collect();
+    assert!(words.len() > 1, "expected multiple encoded-words");
+    for w in words {
+      assert!(w.len() <= 75, "encoded-word exceeds 75 chars: {} ({})", w.len(), w);
+      assert!(w.starts_with("=?UTF-8?Q?") && w.ends_with("?="));
     }
   }
 
@@ -649,5 +831,61 @@ mod tests {
     assert!(!e.is_transient());
     assert!(!e.is_auth());
     assert!(!e.is_message_rejected());
+  }
+
+  #[test]
+  fn provider_code_and_message_from_http_rejection() {
+    // Reproduces the real-world 400: code 10202 / email.invalid.
+    let e =
+      CloudflareErrorKind::Validation { status: 400 }.err(HttpRejection {
+        status:  400,
+        code:    Some(10202),
+        message: Some("email.sending.error.email.invalid".into()),
+        body:    "{\"errors\":[{\"code\":10202}]}".into(),
+      });
+    assert_eq!(e.provider_code(), Some(10202));
+    assert_eq!(
+      e.provider_message(),
+      Some("email.sending.error.email.invalid")
+    );
+  }
+
+  #[test]
+  fn provider_code_from_api_rejection() {
+    let e = CloudflareErrorKind::Api { code: 10001 }.err(ApiRejection {
+      code:    10001,
+      message: "email.sending.error.invalid_request_schema".into(),
+    });
+    assert_eq!(e.provider_code(), Some(10001));
+    assert_eq!(
+      e.provider_message(),
+      Some("email.sending.error.invalid_request_schema")
+    );
+  }
+
+  #[test]
+  fn provider_code_none_without_structured_error() {
+    // A non-JSON body (e.g. a gateway error page) yields no structured code,
+    // and transport-level failures have no provider code at all.
+    let e =
+      CloudflareErrorKind::Validation { status: 400 }.err(HttpRejection {
+        status:  400,
+        code:    None,
+        message: None,
+        body:    "Bad Request".into(),
+      });
+    assert_eq!(e.provider_code(), None);
+    assert_eq!(e.provider_message(), None);
+    assert_eq!(err(CloudflareErrorKind::Network).provider_code(), None);
+  }
+
+  #[test]
+  fn parse_error_envelope_extracts_first_code() {
+    let body = r#"{"success":false,"messages":[],"errors":[{"code":10202,"message":"email.sending.error.email.invalid"}],"result":null}"#;
+    let (code, msg) = parse_error_envelope(body);
+    assert_eq!(code, Some(10202));
+    assert_eq!(msg.as_deref(), Some("email.sending.error.email.invalid"));
+    // A non-JSON body degrades gracefully to no code/message.
+    assert_eq!(parse_error_envelope("Bad Request"), (None, None));
   }
 }

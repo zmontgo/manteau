@@ -82,6 +82,45 @@ async fn success_populates_buckets_and_synthesizes_ids() {
 }
 
 #[tokio::test]
+async fn non_ascii_subject_is_rfc2047_encoded_on_the_wire() {
+  // Regression for Cloudflare 10202 (email.sending.error.email.invalid): a
+  // non-ASCII Subject must reach the wire RFC 2047-encoded so the resulting
+  // header is valid ASCII. The matcher below only matches the encoded form —
+  // a raw-UTF-8 subject would miss every mock, yield a 404, and fail the send.
+  let server = MockServer::start().await;
+
+  Mock::given(method("POST"))
+    .and(path(SEND_PATH))
+    .and(body_partial_json(serde_json::json!({
+        "subject": "=?UTF-8?Q?Welcome_=E2=80=94_test?=",
+    })))
+    .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+            "delivered": ["to@example.com"],
+            "queued": [],
+            "permanent_bounces": [],
+        }
+    })))
+    .mount(&server)
+    .await;
+
+  let template = Template::new(
+    Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
+  );
+  let msg = Message::new(
+    Address::new("from@example.com".parse().unwrap()),
+    vec![Address::new("to@example.com".parse().unwrap())],
+    "Welcome — test",
+    template,
+  );
+
+  transport(&server.uri()).send(&msg).await.unwrap();
+}
+
+#[tokio::test]
 async fn http_200_with_success_false_is_api_error() {
   // The case with no Mailjet analog: HTTP is 200, but the body reports an
   // application-level failure. Must surface as Err, not a silent Ok.
@@ -255,4 +294,42 @@ async fn bad_request_is_validation() {
   assert!(matches!(err.kind(), CloudflareErrorKind::Validation {
     status: 400,
   }));
+  // A plain-text body carries no structured provider code.
+  assert_eq!(err.provider_code(), None);
+}
+
+#[tokio::test]
+async fn validation_surfaces_provider_code_and_message() {
+  // Reproduces the real-world failure: HTTP 400 with a Cloudflare error
+  // envelope. Retry classification stays status-based (Validation), but the
+  // numeric code and machine message are now recoverable instead of buried in
+  // a stringified body.
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(path(SEND_PATH))
+    .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+        "success": false,
+        "messages": [],
+        "errors": [{
+            "code": 10202,
+            "message": "email.sending.error.email.invalid",
+        }],
+        "result": null
+    })))
+    .mount(&server)
+    .await;
+
+  let err = transport(&server.uri())
+    .send(&make_message())
+    .await
+    .unwrap_err();
+
+  assert!(matches!(err.kind(), CloudflareErrorKind::Validation {
+    status: 400,
+  }));
+  assert_eq!(err.provider_code(), Some(10202));
+  assert_eq!(
+    err.provider_message(),
+    Some("email.sending.error.email.invalid")
+  );
 }
