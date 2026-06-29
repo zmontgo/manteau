@@ -17,7 +17,7 @@
 //! [`Push`]: crate::templating::push::Push
 
 pub use crate::{
-  mjml,
+  Transport, mjml,
   models::{Address, EmailAddress, MessageId},
   templating::{
     Block, Body, BodyChild, Button, Column, Element, Image, Push, Section,
