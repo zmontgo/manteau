@@ -12,8 +12,7 @@
 //! failures by category. See the [`crate::transport`] module docs for the
 //! error pattern.
 
-use std::borrow::Cow;
-use std::time::Duration;
+use std::{borrow::Cow, time::Duration};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -418,7 +417,9 @@ fn encode_header_word(value: &str) -> Cow<'_, str> {
       ' ' => piece.push('_'),
       // Printable ASCII may appear literally in Q-text, except the three
       // characters that always carry meaning there: '=', '?', '_'.
-      c if (0x20..=0x7e).contains(&(c as u32)) && !matches!(c, '=' | '?' | '_') => {
+      c if (0x20..=0x7e).contains(&(c as u32))
+        && !matches!(c, '=' | '?' | '_') =>
+      {
         piece.push(c);
       }
       c => {
@@ -711,7 +712,12 @@ mod tests {
     let words: Vec<&str> = out.split(' ').collect();
     assert!(words.len() > 1, "expected multiple encoded-words");
     for w in words {
-      assert!(w.len() <= 75, "encoded-word exceeds 75 chars: {} ({})", w.len(), w);
+      assert!(
+        w.len() <= 75,
+        "encoded-word exceeds 75 chars: {} ({})",
+        w.len(),
+        w
+      );
       assert!(w.starts_with("=?UTF-8?Q?") && w.ends_with("?="));
     }
   }

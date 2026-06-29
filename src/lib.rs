@@ -67,3 +67,15 @@ pub use transports::mailjet::{
 pub use transports::mock::{MockReceipt, MockTransport};
 #[cfg(feature = "stdout")]
 pub use transports::stdout::{StdoutReceipt, StdoutTransport};
+
+/// Durable submission keys and provider idempotency capability.
+pub mod idempotency;
+pub use idempotency::{
+  IdempotencyKey, IdempotentTransport, InvalidIdempotencyKey, InvalidMessage,
+  PreparationError, PreparedMessage,
+};
+#[cfg(feature = "jetemail")]
+pub use transports::jetemail::{
+  JetEmailConfig, JetEmailError, JetEmailErrorKind, JetEmailReceipt,
+  JetEmailTransport,
+};

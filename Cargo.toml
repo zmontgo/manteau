@@ -3,7 +3,7 @@ members = ["manteau-macros"]
 
 [package]
 name         = "manteau"
-version      = "0.1.9"
+version      = "0.1.10"
 edition      = "2024"
 rust-version = "1.85"
 authors      = ["Zachary Montgomery"]
@@ -26,6 +26,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default    = []
+jetemail   = ["dep:reqwest", "dep:serde_json", "dep:sha2", "tls-rustls"]
 cloudflare = ["dep:reqwest", "dep:serde_json", "tls-rustls"]
 mailjet    = ["dep:reqwest", "dep:serde_json", "tls-rustls"]
 stdout     = []
@@ -41,7 +42,7 @@ tracing        = "0.1"
 html2text      = "0.16"
 validator      = "0.20"
 askama_escape  = "0.10"
-manteau-macros = { version = "=0.1.5", path = "manteau-macros" }
+manteau-macros = { version = "=0.1.6", path = "manteau-macros" }
 
 reqwest    = { version = "0.13", features = ["json"], default-features = false, optional = true }
 serde_json = { version = "1", optional = true }
@@ -68,3 +69,7 @@ name = "newsletter"
 
 [[example]]
 name = "builder"
+
+[dependencies.sha2]
+version = "0.10"
+optional = true

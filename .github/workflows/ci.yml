@@ -40,6 +40,8 @@ jobs:
         features:
           - ""
           - "mailjet"
+          - "jetemail"
+          - "cloudflare"
           - "stdout"
           - "mailjet,stdout"
     env:

@@ -236,3 +236,17 @@ I will be hand-revising this in the coming days until a properly vetted 0.2.0 re
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE).
+
+## Idempotent JetEmail submissions
+
+Enable `jetemail`. Use `IdempotentTransport` as the bound when duplicate
+submission must be prevented; ordinary `Transport` does not promise this.
+`PreparedMessage::render(&message)` freezes the envelope and rendered bodies.
+Persist it, an `IdempotencyKey`, and the first-attempt time before calling
+`send_idempotent(&key, &prepared)`. Reuse that exact request after a lost reply.
+
+JetEmail remembers keys for 24 hours within one region. Keep the same account
+and regional routing across retries. `retention()` exposes the time limit;
+stop retrying before it expires and reconcile uncertain outcomes instead of
+assigning a fresh key. A queued receipt proves acceptance, not delivery.
+Manteau does not schedule mail or retry requests automatically.

@@ -92,10 +92,10 @@ fn gen_element(el: &Element) -> TokenStream {
 /// any) and the rest (which become chained setter calls).
 ///
 /// For `Button` (text-bodied + required `href`) and `Image` (empty-bodied
-/// + required `src`), the required attribute is pulled out so codegen can
+/// with required `src`), the required attribute is pulled out so codegen can
 /// pass it as a constructor argument. Everything else becomes a setter
 /// chain after construction.
-fn split_required<'a>(el: &'a Element) -> (Option<&'a Attr>, Vec<&'a Attr>) {
+fn split_required(el: &Element) -> (Option<&Attr>, Vec<&Attr>) {
   let Some(req_name) = el.kind.required_attr() else {
     return (None, el.attrs.iter().collect());
   };
@@ -290,13 +290,10 @@ fn build_text_content(body: &ElementBody, span: Span) -> TokenStream {
     return quote_spanned! { span => #lit };
   }
 
-  // General path: build a `String` via push_str / write!. The
-  // `use ::std::fmt::Write as _` brings the trait method `write_fmt`
-  // into scope for `write!` without polluting the caller's namespace.
+  // Fully qualified formatting avoids unused imports in literal-only branches.
   let part_stmts = parts.iter().map(|p| gen_text_part(p, span));
   quote_spanned! { span =>
     {
-      use ::std::fmt::Write as _;
       let mut __s = ::std::string::String::new();
       #(#part_stmts)*
       __s
@@ -309,13 +306,19 @@ fn build_text_content(body: &ElementBody, span: Span) -> TokenStream {
 fn gen_text_part(part: &TextPart, span: Span) -> TokenStream {
   match part {
     TextPart::Literal(s) => {
-      let lit = syn::LitStr::new(s, span);
-      quote_spanned! { span => __s.push_str(#lit); }
+      let mut chars = s.chars();
+      if let (Some(ch), None) = (chars.next(), chars.next()) {
+        let lit = syn::LitChar::new(ch, span);
+        quote_spanned! { span => __s.push(#lit); }
+      } else {
+        let lit = syn::LitStr::new(s, span);
+        quote_spanned! { span => __s.push_str(#lit); }
+      }
     }
     TextPart::Interp(expr) => {
       let espan = expr_span(expr);
       quote_spanned! { espan =>
-        ::std::write!(&mut __s, "{}", #expr)
+        ::std::fmt::Write::write_fmt(&mut __s, ::std::format_args!("{}", #expr))
           .expect("formatting into a String is infallible");
       }
     }

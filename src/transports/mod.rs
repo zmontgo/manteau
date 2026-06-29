@@ -16,3 +16,6 @@ pub mod mailjet;
 
 #[cfg(feature = "stdout")]
 pub mod stdout;
+
+#[cfg(feature = "jetemail")]
+pub mod jetemail;
