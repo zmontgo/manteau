@@ -33,7 +33,7 @@ use crate::{message::Message, models::MessageId, render::RenderError};
 /// provider assigned to the accepted message. Cross-transport observability
 /// code (logging, metrics, audit) writes against this trait so it works
 /// uniformly over manteau's transports and over consumer-defined ones.
-pub trait Receipt {
+pub trait Receipt: std::fmt::Debug {
   /// IDs the provider assigned to the accepted message(s). One transport
   /// may produce multiple IDs (one per recipient, in Mailjet's case);
   /// others may produce a single placeholder. Order matches the provider's
