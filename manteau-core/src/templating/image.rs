@@ -12,17 +12,25 @@ use crate::{
 };
 
 /// `mj-image` — embedded image with required source URL.
-#[non_exhaustive]
+///
+/// ```compile_fail
+/// use manteau_core::templating::{Image, attributes::urls::Url};
+/// let link = Url::try_parse("mailto:person@example.com").unwrap();
+/// let image = Image::new(link);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Image {
-  pub src:   Url,
-  pub alt:   Option<String>,
-  pub href:  Option<Url>,
-  pub width: Option<Pixels>,
+  src:   ImageUrl,
+  alt:   Option<String>,
+  href:  Option<Url>,
+  width: Option<Pixels>,
 }
 
 impl Image {
-  pub fn new(src: Url) -> Self {
+  /// Checked image source URL.
+  pub fn src(&self) -> &ImageUrl { &self.src }
+
+  pub fn new(src: ImageUrl) -> Self {
     Self {
       src,
       alt: None,
@@ -49,11 +57,11 @@ impl Image {
 
 impl Element for Image {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mj-image")
-      .attr("src", Some(&self.src))
-      .attr("alt", self.alt.as_ref())
-      .attr("href", self.href.as_ref())
-      .attr("width", self.width.as_ref())
+    w.open(crate::render::ElementName::builtin("mj-image"))
+      .attr(crate::render::AttributeName::builtin("src"), Some(&self.src))
+      .attr(crate::render::AttributeName::builtin("alt"), self.alt.as_ref())
+      .attr(crate::render::AttributeName::builtin("href"), self.href.as_ref())
+      .attr(crate::render::AttributeName::builtin("width"), self.width.as_ref())
       .close_self();
   }
 }

@@ -5,8 +5,8 @@ use std::time::Duration;
 use super::HttpError;
 
 /// Bounded response provided by an HTTP implementation. The driver must apply
-/// request limits before constructing it; the constructor is an extension
-/// boundary.
+/// request limits before constructing it; only a request or its response guard
+/// can construct this value.
 pub struct HttpResponse {
   status:      u16,
   retry_after: Option<Duration>,
@@ -14,8 +14,7 @@ pub struct HttpResponse {
 }
 
 impl HttpResponse {
-  /// Supply observed status, delay, and body after enforcing request bounds.
-  pub fn new(
+  pub(crate) fn new(
     status: u16,
     retry_after: Option<Duration>,
     body: Vec<u8>,

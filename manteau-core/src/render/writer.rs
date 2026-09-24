@@ -7,6 +7,7 @@
 //! powers the askama template ecosystem.
 
 use std::fmt::Write as _;
+use super::{AttributeName, ElementName};
 
 /// Accumulating buffer that produces an MJML document.
 #[derive(Debug, Default)]
@@ -26,12 +27,12 @@ impl MjmlWriter {
   /// Begin an element. Returns a builder that accumulates attributes, then
   /// terminates with [`ElementWriter::text`], [`ElementWriter::children`],
   /// or [`ElementWriter::close_self`].
-  pub fn open(&mut self, tag: &'static str) -> ElementWriter<'_> {
+  pub fn open(&mut self, tag: ElementName) -> ElementWriter<'_> {
     self.buf.push('<');
-    self.buf.push_str(tag);
+    self.buf.push_str(tag.as_str());
     ElementWriter {
       writer: self,
-      tag,
+      tag: tag.as_str(),
       closed: false,
     }
   }
@@ -65,12 +66,12 @@ impl<'a> ElementWriter<'a> {
   /// allocation between Display formatting and escape.
   pub fn attr<V: std::fmt::Display>(
     self,
-    name: &str,
+    name: AttributeName,
     value: Option<&V>,
   ) -> Self {
     if let Some(v) = value {
       self.writer.buf.push(' ');
-      self.writer.buf.push_str(name);
+      self.writer.buf.push_str(name.as_str());
       self.writer.buf.push_str("=\"");
       // String's fmt::Write impl is infallible. `MarkupDisplay::new_unsafe`
       // is the "untrusted source, escape it" path.
@@ -135,7 +136,7 @@ mod tests {
   #[test]
   fn open_and_text() {
     let mut w = MjmlWriter::new();
-    w.open("mj-text").text("hello");
+    w.open(crate::render::ElementName::builtin("mj-text")).text("hello");
     assert_eq!(w.into_string(), "<mj-text>hello</mj-text>");
   }
 
@@ -144,9 +145,9 @@ mod tests {
     let mut w = MjmlWriter::new();
     let color = Some("red".to_string());
     let absent: Option<String> = None;
-    w.open("mj-text")
-      .attr("color", color.as_ref())
-      .attr("font-size", absent.as_ref())
+    w.open(crate::render::ElementName::builtin("mj-text"))
+      .attr(crate::render::AttributeName::builtin("color"), color.as_ref())
+      .attr(crate::render::AttributeName::builtin("font-size"), absent.as_ref())
       .text("hi");
     assert_eq!(w.into_string(), r#"<mj-text color="red">hi</mj-text>"#);
   }
@@ -154,7 +155,7 @@ mod tests {
   #[test]
   fn text_content_escaped() {
     let mut w = MjmlWriter::new();
-    w.open("mj-text").text("a < b & c > d");
+    w.open(crate::render::ElementName::builtin("mj-text")).text("a < b & c > d");
     assert_eq!(
       w.into_string(),
       "<mj-text>a &lt; b &amp; c &gt; d</mj-text>"
@@ -165,15 +166,15 @@ mod tests {
   fn attr_value_escaped() {
     let mut w = MjmlWriter::new();
     let v = Some(r#"a"b<c"#.to_string());
-    w.open("mj-image").attr("src", v.as_ref()).close_self();
+    w.open(crate::render::ElementName::builtin("mj-image")).attr(crate::render::AttributeName::builtin("src"), v.as_ref()).close_self();
     assert_eq!(w.into_string(), r#"<mj-image src="a&quot;b&lt;c"/>"#);
   }
 
   #[test]
   fn children_callback() {
     let mut w = MjmlWriter::new();
-    w.open("mj-section").children(|w| {
-      w.open("mj-column").text("x");
+    w.open(crate::render::ElementName::builtin("mj-section")).children(|w| {
+      w.open(crate::render::ElementName::builtin("mj-column")).text("x");
     });
     assert_eq!(
       w.into_string(),
@@ -185,7 +186,7 @@ mod tests {
   fn self_closing() {
     let mut w = MjmlWriter::new();
     let src = Some("https://example.com/img.png".to_string());
-    w.open("mj-image").attr("src", src.as_ref()).close_self();
+    w.open(crate::render::ElementName::builtin("mj-image")).attr(crate::render::AttributeName::builtin("src"), src.as_ref()).close_self();
     assert_eq!(
       w.into_string(),
       r#"<mj-image src="https://example.com/img.png"/>"#
@@ -197,7 +198,7 @@ mod tests {
     let mut w = MjmlWriter::new();
     {
       // Intentionally forget the terminal call.
-      let _ = w.open("mj-text");
+      let _ = w.open(crate::render::ElementName::builtin("mj-text"));
     }
     // Drop runs and recovers with self-closing.
     assert_eq!(w.into_string(), "<mj-text/>");

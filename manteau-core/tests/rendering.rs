@@ -61,7 +61,8 @@ fn supplied_plaintext_skips_conversion_and_empty_html_is_rejected() {
       Body::new()
         .push(Section::new().push(Column::new().push(Text::new("hello")))),
     );
-  let rendered = template.render_with_text(&renderer, Some("supplied")).unwrap();
+  let supplied = PlaintextBody::new("supplied").unwrap();
+  let rendered = template.render_with_text(&renderer, Some(&supplied)).unwrap();
 
   assert_eq!(rendered.text(), "supplied");
   assert_eq!(renderer.html_calls.load(Ordering::SeqCst), 1);

@@ -12,21 +12,26 @@ use crate::{
 };
 
 /// `mj-button` — clickable button with required destination URL.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Button {
-  pub content:          String,
-  pub href:             Url,
-  pub background_color: Option<Color>,
-  pub color:            Option<Color>,
-  pub border_radius:    Option<Measurement>,
-  pub font_size:        Option<Measurement>,
-  pub font_weight:      Option<FontWeight>,
-  pub inner_padding:    PaddingOptions,
-  pub align:            Option<ButtonAlignment>,
+  content:          String,
+  href:             Url,
+  background_color: Option<Color>,
+  color:            Option<Color>,
+  border_radius:    Option<Measurement>,
+  font_size:        Option<Measurement>,
+  font_weight:      Option<FontWeight>,
+  inner_padding:    PaddingOptions,
+  align:            Option<ButtonAlignment>,
 }
 
 impl Button {
+  /// Button label before MJML escaping.
+  pub fn content(&self) -> &str { &self.content }
+
+  /// Checked destination URL.
+  pub fn href(&self) -> &Url { &self.href }
+
   pub fn new(content: impl Into<String>, href: Url) -> Self {
     Self {
       content: content.into(),
@@ -99,18 +104,18 @@ impl Button {
 
 impl Element for Button {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mj-button")
-      .attr("href", Some(&self.href))
-      .attr("background-color", self.background_color.as_ref())
-      .attr("color", self.color.as_ref())
-      .attr("border-radius", self.border_radius.as_ref())
-      .attr("font-size", self.font_size.as_ref())
-      .attr("font-weight", self.font_weight.as_ref())
-      .attr("align", self.align.as_ref())
-      .attr("inner-padding-top", self.inner_padding.top())
-      .attr("inner-padding-right", self.inner_padding.right())
-      .attr("inner-padding-bottom", self.inner_padding.bottom())
-      .attr("inner-padding-left", self.inner_padding.left())
+    w.open(crate::render::ElementName::builtin("mj-button"))
+      .attr(crate::render::AttributeName::builtin("href"), Some(&self.href))
+      .attr(crate::render::AttributeName::builtin("background-color"), self.background_color.as_ref())
+      .attr(crate::render::AttributeName::builtin("color"), self.color.as_ref())
+      .attr(crate::render::AttributeName::builtin("border-radius"), self.border_radius.as_ref())
+      .attr(crate::render::AttributeName::builtin("font-size"), self.font_size.as_ref())
+      .attr(crate::render::AttributeName::builtin("font-weight"), self.font_weight.as_ref())
+      .attr(crate::render::AttributeName::builtin("align"), self.align.as_ref())
+      .attr(crate::render::AttributeName::builtin("inner-padding-top"), self.inner_padding.top())
+      .attr(crate::render::AttributeName::builtin("inner-padding-right"), self.inner_padding.right())
+      .attr(crate::render::AttributeName::builtin("inner-padding-bottom"), self.inner_padding.bottom())
+      .attr(crate::render::AttributeName::builtin("inner-padding-left"), self.inner_padding.left())
       .text(&self.content);
   }
 }

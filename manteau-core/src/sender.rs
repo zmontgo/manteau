@@ -107,8 +107,8 @@ impl<P: HttpProvider, H: Http> Sender<P, H> {
     let response = self.http.post(request).await.map_err(SendError::Http)?;
 
     let policy = self.provider.status_policy();
-    if !policy.handled.contains(&response.status()) {
-      let acceptance = if policy.not_accepted.contains(&response.status()) {
+    if !policy.handles(response.status()) {
+      let acceptance = if policy.proves_not_accepted(response.status()) {
         Acceptance::NotAccepted
       } else {
         Acceptance::Unknown
@@ -266,8 +266,41 @@ impl<E: TransportFailure> TransportFailure for SendError<E> {
 /// protocol.
 #[derive(Debug, Clone, Copy)]
 pub struct StatusPolicy {
-  /// Statuses requiring provider-specific response interpretation.
-  pub handled:      &'static [u16],
-  /// Other statuses that prove this invocation accepted no recipients.
-  pub not_accepted: &'static [u16],
+  handled:      &'static [u16],
+  not_accepted: &'static [u16],
+}
+
+impl StatusPolicy {
+  /// Declare disjoint statuses requiring provider interpretation and statuses
+  /// that prove rejection. Invalid policy literals fail during const evaluation.
+  pub const fn new(handled: &'static [u16], not_accepted: &'static [u16]) -> Self {
+    let mut i = 0;
+    while i < handled.len() {
+      assert!(handled[i] >= 100 && handled[i] <= 599, "invalid handled HTTP status");
+      let mut j = 0;
+      while j < not_accepted.len() {
+        assert!(handled[i] != not_accepted[j], "overlapping status policy");
+        j += 1;
+      }
+      i += 1;
+    }
+
+    let mut i = 0;
+    while i < not_accepted.len() {
+      assert!(not_accepted[i] >= 100 && not_accepted[i] <= 599, "invalid rejection HTTP status");
+      i += 1;
+    }
+
+    Self { handled, not_accepted }
+  }
+
+  /// Whether this status requires provider-specific body interpretation.
+  pub fn handles(&self, status: u16) -> bool {
+    self.handled.contains(&status)
+  }
+
+  /// Whether this status proves that no recipient was accepted.
+  pub fn proves_not_accepted(&self, status: u16) -> bool {
+    self.not_accepted.contains(&status)
+  }
 }

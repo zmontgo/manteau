@@ -1,7 +1,7 @@
 //! Shared preparation of MJML and validated rendered bodies.
 
 use crate::{
-  render::{HtmlBody, MjmlDocument, MjmlWriter, PlaintextBody, RenderError, Renderer},
+  render::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, MjmlWriter, PlaintextBody, RenderError, Renderer},
   templating::{Element, Template},
 };
 
@@ -22,15 +22,25 @@ struct Bodies {
   text: String,
 }
 
-/// Both email body alternatives were empty.
+/// An externally supplied body pair is empty or violates an alternative's
+/// character contract.
 #[derive(Debug, thiserror::Error)]
-#[error("at least one nonempty email body is required")]
-pub struct EmptyBody;
+pub enum RenderedBodyError {
+  /// Neither alternative contains content.
+  #[error("at least one nonempty email body is required")]
+  Empty,
+  /// HTML contains forbidden content.
+  #[error("invalid email HTML")]
+  Html(#[source] InvalidHtmlBody),
+  /// Plaintext contains forbidden content.
+  #[error("invalid email plaintext")]
+  Plaintext(#[source] InvalidPlaintextBody),
+}
 
 impl TryFrom<Bodies> for Rendered {
-  type Error = EmptyBody;
+  type Error = RenderedBodyError;
 
-  fn try_from(value: Bodies) -> Result<Self, EmptyBody> {
+  fn try_from(value: Bodies) -> Result<Self, Self::Error> {
     Self::new(value.html, value.text)
   }
 }
@@ -45,12 +55,21 @@ impl Rendered {
   pub fn new(
     html: impl Into<String>,
     text: impl Into<String>,
-  ) -> Result<Self, EmptyBody> {
+  ) -> Result<Self, RenderedBodyError> {
     let html = html.into();
     let text = text.into();
     if html.is_empty() && text.is_empty() {
-      return Err(EmptyBody);
+      return Err(RenderedBodyError::Empty);
     }
+
+    let html = if html.is_empty() {
+      html
+    } else {
+      HtmlBody::new(html).map_err(RenderedBodyError::Html)?.into_string()
+    };
+    let text = PlaintextBody::new(text)
+      .map_err(RenderedBodyError::Plaintext)?
+      .into_string();
 
     Ok(Self { html, text })
   }
@@ -87,7 +106,7 @@ impl Template {
   pub fn render_with_text(
     &self,
     renderer: &impl Renderer,
-    explicit_text: Option<&str>,
+    explicit_text: Option<&PlaintextBody>,
   ) -> Result<Rendered, RenderError> {
     let mut writer = MjmlWriter::new();
     self.write_mjml(&mut writer);
@@ -95,7 +114,7 @@ impl Template {
     let document = MjmlDocument::new(writer.into_string());
     let html = renderer.html(&document).map_err(RenderError::html)?;
     let text = match explicit_text {
-      Some(text) => PlaintextBody::new(text).map_err(RenderError::plaintext)?,
+      Some(text) => text.clone(),
       None => renderer.plaintext(&html).map_err(RenderError::plaintext)?,
     };
 

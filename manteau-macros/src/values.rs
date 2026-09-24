@@ -14,6 +14,29 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote_spanned;
 use syn::{LitStr, Result};
 
+/// Parse an image source under the narrower HTTP(S)-only contract.
+pub fn parse_image_url(lit: &LitStr) -> Result<TokenStream> {
+  let value = lit.value();
+  manteau_core::templating::attributes::urls::ImageUrl::try_parse(&value)
+    .map_err(|_| syn::Error::new(lit.span(), "image source must be an HTTP(S) URL without credentials"))?;
+
+  Ok(quote_spanned! { lit.span() =>
+    ::manteau::prelude::ImageUrl::try_parse(#lit)
+      .expect("manteau::mjml!: image URL validated at expansion time")
+  })
+}
+
+/// Validate a literal font stack against core before emitting its constructor.
+pub fn parse_font_family(lit: &LitStr) -> Result<TokenStream> {
+  manteau_core::templating::attributes::fonts::FontFamily::new(&lit.value())
+    .map_err(|_| syn::Error::new(lit.span(), "font-family must be a comma-separated list of simple family names"))?;
+
+  Ok(quote_spanned! { lit.span() =>
+    ::manteau::prelude::FontFamily::new(#lit)
+      .expect("manteau::mjml!: font family validated at expansion time")
+  })
+}
+
 /// Parse the contents of an attribute string literal and produce a typed
 /// Rust expression. The span of the resulting expression is anchored on
 /// the literal so errors point back at the source.
@@ -92,6 +115,7 @@ fn try_parse_color(s: &str, span: Span) -> Result<Option<TokenStream>> {
   let lit = syn::LitInt::new(&format!("0x{:06x}u32", rgb), span);
   Ok(Some(quote_spanned! { span =>
     ::manteau::prelude::Color::hex(#lit)
+      .expect("manteau::mjml!: color validated at expansion time")
   }))
 }
 
@@ -128,23 +152,22 @@ fn try_parse_unit(s: &str, span: Span) -> Result<Option<TokenStream>> {
   Ok(Some(ctor))
 }
 
-/// Recognizes URL strings with known schemes. Validates syntactic
-/// correctness at expansion time via `url::Url::parse` so the
-/// `Url::try_parse(...).expect(...)` we emit is statically safe.
+/// Recognizes URL strings with known schemes. Validates against core's
+/// checked URL contract at expansion time, so the emitted constructor cannot
+/// reject the same literal at runtime.
 ///
 /// Returns `None` if the string doesn't start with a recognized scheme
 /// prefix. Returns `Err` if it does but doesn't parse.
 fn try_parse_url(s: &str, span: Span) -> Result<Option<TokenStream>> {
   const SCHEME_PREFIXES: &[&str] =
-    &["http://", "https://", "mailto:", "tel:", "data:"];
+    &["http://", "https://", "mailto:", "tel:", "data:", "javascript:", "file:", "cid:"];
 
   if !SCHEME_PREFIXES.iter().any(|p| s.starts_with(p)) {
     return Ok(None);
   }
 
-  if let Err(e) = url::Url::parse(s) {
-    return Err(syn::Error::new(span, format!("invalid URL `{}`: {}", s, e)));
-  }
+  manteau_core::templating::attributes::urls::Url::try_parse(s)
+    .map_err(|_| syn::Error::new(span, "URL must use HTTP(S), mailto, or tel without credentials"))?;
 
   let lit = syn::LitStr::new(s, span);
   Ok(Some(quote_spanned! { span =>
@@ -182,10 +205,14 @@ fn emit_unit_float(
       format!("expected number for `{}` value, got `{}`", type_name, num),
     )
   })?;
+  if !parsed.is_finite() || parsed < 0.0 {
+    return Err(syn::Error::new(span, format!("{} must be finite and nonnegative", type_name)));
+  }
   let lit = syn::LitFloat::new(&format!("{}f32", parsed), span);
   let ty = syn::Ident::new(type_name, span);
   Ok(quote_spanned! { span =>
     ::manteau::prelude::#ty::new(#lit)
+      .expect("manteau::mjml!: measurement validated at expansion time")
   })
 }
 

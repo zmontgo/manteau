@@ -70,6 +70,7 @@ impl std::fmt::Debug for HtmlBody {
 
 /// Plaintext without forbidden control characters. Empty text is allowed when
 /// the paired HTML body carries the message.
+#[derive(Clone)]
 pub struct PlaintextBody(String);
 
 /// Plaintext contains a forbidden control character.

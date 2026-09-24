@@ -1,6 +1,6 @@
 //! Consumer-authored email intent before rendering or transport submission.
 
-use manteau_core::{Envelope, PreparedMessage, RenderError, Renderer, templating::Template};
+use manteau_core::{Envelope, PlaintextBody, PreparedMessage, RenderError, Renderer, templating::Template};
 
 /// An envelope, template, and optional plaintext alternative awaiting
 /// preparation. A provider never receives this authoring value; it receives
@@ -8,7 +8,7 @@ use manteau_core::{Envelope, PreparedMessage, RenderError, Renderer, templating:
 pub struct Message {
   envelope: Envelope,
   template: Template,
-  text: Option<String>,
+  text: Option<PlaintextBody>,
 }
 
 impl Message {
@@ -18,8 +18,8 @@ impl Message {
   }
 
   /// Supply plaintext instead of deriving it from rendered HTML.
-  pub fn text(mut self, text: impl Into<String>) -> Self {
-    self.text = Some(text.into());
+  pub fn text(mut self, text: PlaintextBody) -> Self {
+    self.text = Some(text);
     self
   }
 
@@ -27,7 +27,7 @@ impl Message {
   /// The authoring value remains available if rendering fails.
   #[tracing::instrument(skip_all)]
   pub fn prepare(&self, renderer: &impl Renderer) -> Result<PreparedMessage, RenderError> {
-    let body = self.template.render_with_text(renderer, self.text.as_deref())?;
+    let body = self.template.render_with_text(renderer, self.text.as_ref())?;
     Ok(PreparedMessage::new(self.envelope.clone(), body))
   }
 }

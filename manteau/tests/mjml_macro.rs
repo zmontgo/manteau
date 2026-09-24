@@ -56,7 +56,7 @@ fn attrs_string_lit() -> Body {
 }
 
 fn attrs_expr() -> Body {
-  let c = Color::hex(0x123456);
+  let c = Color::hex(0x123456).unwrap();
   mjml!(
     <Body background-color={c}>
       <Section>
@@ -338,34 +338,34 @@ fn smoke_all_examples_compile_and_construct() {
 #[test]
 fn text_body_if_picks_branch() {
   let b = text_with_if();
-  assert_eq!(text_at_path(&b, 0).content, "Hello, friend!");
+  assert_eq!(text_at_path(&b, 0).content(), "Hello, friend!");
 }
 
 #[test]
 fn text_body_for_concatenates_iterations() {
   let b = text_with_for();
-  assert_eq!(text_at_path(&b, 0).content, "Members: Alice Bob Carol ");
+  assert_eq!(text_at_path(&b, 0).content(), "Members: Alice Bob Carol ");
 }
 
 #[test]
 fn text_body_match_picks_arm() {
   let b = text_with_match();
-  assert_eq!(text_at_path(&b, 0).content, "Status: one or two");
+  assert_eq!(text_at_path(&b, 0).content(), "Status: one or two");
 }
 
 #[test]
 fn text_body_while_loops() {
   let b = text_with_while();
-  assert_eq!(text_at_path(&b, 0).content, "Countdown: 3 2 1");
+  assert_eq!(text_at_path(&b, 0).content(), "Countdown: 3 2 1");
 }
 
 fn text_at_path(b: &Body, depth: usize) -> &Text {
-  assert!(depth < b.children.len());
-  let s = match &b.children[depth] {
+  assert!(depth < b.children().len());
+  let s = match &b.children()[depth] {
     BodyChild::Section(s) => s,
     _ => panic!("expected Section as body child"),
   };
-  match &s.columns[0].children[0] {
+  match &s.column_items()[0].blocks()[0] {
     Block::Text(t) => t,
     _ => panic!("expected Text at column[0].children[0]"),
   }
@@ -374,30 +374,30 @@ fn text_at_path(b: &Body, depth: usize) -> &Text {
 #[test]
 fn text_simple_carries_literal_content() {
   let b = text_simple();
-  assert_eq!(text_at_path(&b, 0).content, "Hello, world!");
+  assert_eq!(text_at_path(&b, 0).content(), "Hello, world!");
 }
 
 #[test]
 fn text_interp_is_format_concatenated() {
   let b = text_with_interp();
-  assert_eq!(text_at_path(&b, 0).content, "Hello, Alice! Welcome.");
+  assert_eq!(text_at_path(&b, 0).content(), "Hello, Alice! Welcome.");
 }
 
 #[test]
 fn string_lit_attrs_dispatch_typed() {
   let b = attrs_string_lit();
-  assert_eq!(b.background_color, Some(Color::hex(0xff0000)));
-  let s = match &b.children[0] {
+  assert_eq!(b.configured_background_color(), Some(&Color::hex(0xff0000).unwrap()));
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  assert_eq!(s.background_color, Some(Color::hex(0xff0000)));
-  assert_eq!(s.columns[0].width, Some(Percentage::new(50).unwrap()));
-  match &s.columns[0].children[0] {
+  assert_eq!(s.configured_background_color(), Some(&Color::hex(0xff0000).unwrap()));
+  assert_eq!(s.column_items()[0].configured_width(), Some(Percentage::new(50).unwrap()));
+  match &s.column_items()[0].blocks()[0] {
     Block::Text(t) => {
-      assert_eq!(t.color, Some(Color::hex(0xaabbcc)));
-      assert_eq!(t.font_size, Some(Pixels::new(20)));
-      assert_eq!(t.content, "Styled");
+      assert_eq!(t.configured_color(), Some(&Color::hex(0xaabbcc).unwrap()));
+      assert_eq!(t.configured_font_size(), Some(Pixels::new(20)));
+      assert_eq!(t.content(), "Styled");
     }
     _ => panic!(),
   }
@@ -406,16 +406,16 @@ fn string_lit_attrs_dispatch_typed() {
 #[test]
 fn for_loop_produces_one_child_per_iteration() {
   let b = control_flow_for();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  let children = &s.columns[0].children;
+  let children = &s.column_items()[0].blocks();
   assert_eq!(children.len(), 3);
   let texts: Vec<&str> = children
     .iter()
     .map(|c| match c {
-      Block::Text(t) => t.content.as_str(),
+      Block::Text(t) => t.content(),
       _ => panic!(),
     })
     .collect();
@@ -425,13 +425,13 @@ fn for_loop_produces_one_child_per_iteration() {
 #[test]
 fn if_else_picks_correct_branch() {
   let b = control_flow_if_else();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  assert_eq!(s.columns[0].children.len(), 1);
-  match &s.columns[0].children[0] {
-    Block::Text(t) => assert_eq!(t.content, "No"),
+  assert_eq!(s.column_items()[0].blocks().len(), 1);
+  match &s.column_items()[0].blocks()[0] {
+    Block::Text(t) => assert_eq!(t.content(), "No"),
     _ => panic!(),
   }
 }
@@ -439,14 +439,14 @@ fn if_else_picks_correct_branch() {
 #[test]
 fn button_has_required_href() {
   let b = button_with_required_attr();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  match &s.columns[0].children[0] {
+  match &s.column_items()[0].blocks()[0] {
     Block::Button(btn) => {
-      assert_eq!(btn.content, "Click me");
-      assert_eq!(btn.href.as_str(), "https://example.com");
+      assert_eq!(btn.content(), "Click me");
+      assert_eq!(btn.href().as_str(), "https://example.com/");
     }
     _ => panic!("expected button"),
   }
@@ -455,13 +455,13 @@ fn button_has_required_href() {
 #[test]
 fn image_has_required_src() {
   let b = image_self_closing();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  match &s.columns[0].children[0] {
+  match &s.column_items()[0].blocks()[0] {
     Block::Image(img) => {
-      assert_eq!(img.src.as_str(), "https://example.com/logo.png");
+      assert_eq!(img.src().as_str(), "https://example.com/logo.png");
     }
     _ => panic!("expected image"),
   }
@@ -470,15 +470,15 @@ fn image_has_required_src() {
 #[test]
 fn while_loop_runs_until_condition_fails() {
   let b = control_flow_while();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  let texts: Vec<&str> = s.columns[0]
-    .children
+  let texts: Vec<&str> = s.column_items()[0]
+    .blocks()
     .iter()
     .map(|c| match c {
-      Block::Text(t) => t.content.as_str(),
+      Block::Text(t) => t.content(),
       _ => panic!(),
     })
     .collect();
@@ -488,15 +488,15 @@ fn while_loop_runs_until_condition_fails() {
 #[test]
 fn while_let_loop_drains_iterator() {
   let b = control_flow_while_let();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  let texts: Vec<&str> = s.columns[0]
-    .children
+  let texts: Vec<&str> = s.column_items()[0]
+    .blocks()
     .iter()
     .map(|c| match c {
-      Block::Text(t) => t.content.as_str(),
+      Block::Text(t) => t.content(),
       _ => panic!(),
     })
     .collect();
@@ -506,13 +506,13 @@ fn while_let_loop_drains_iterator() {
 #[test]
 fn match_arm_with_or_pattern_fires() {
   let b = control_flow_match();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  assert_eq!(s.columns[0].children.len(), 1);
-  match &s.columns[0].children[0] {
-    Block::Text(t) => assert_eq!(t.content, "one or two"),
+  assert_eq!(s.column_items()[0].blocks().len(), 1);
+  match &s.column_items()[0].blocks()[0] {
+    Block::Text(t) => assert_eq!(t.content(), "one or two"),
     _ => panic!(),
   }
 }
@@ -520,15 +520,15 @@ fn match_arm_with_or_pattern_fires() {
 #[test]
 fn match_arm_with_multiple_children() {
   let b = control_flow_match_multi_child();
-  let s = match &b.children[0] {
+  let s = match &b.children()[0] {
     BodyChild::Section(s) => s,
     _ => panic!(),
   };
-  let texts: Vec<&str> = s.columns[0]
-    .children
+  let texts: Vec<&str> = s.column_items()[0]
+    .blocks()
     .iter()
     .map(|c| match c {
-      Block::Text(t) => t.content.as_str(),
+      Block::Text(t) => t.content(),
       _ => panic!(),
     })
     .collect();
@@ -538,10 +538,10 @@ fn match_arm_with_multiple_children() {
 #[test]
 fn wrapper_appears_as_body_child() {
   let b = wrapper_with_sections();
-  match &b.children[0] {
+  match &b.children()[0] {
     BodyChild::Wrapper(w) => {
-      assert_eq!(w.background_color, Some(Color::hex(0xffffff)));
-      assert_eq!(w.sections.len(), 1);
+      assert_eq!(w.configured_background_color(), Some(&Color::hex(0xffffff).unwrap()));
+      assert_eq!(w.section_items().len(), 1);
     }
     _ => panic!("expected Wrapper"),
   }

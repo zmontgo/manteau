@@ -13,3 +13,18 @@ redesign goal. Finish that goal, then wait for the author's direction on this li
    diagnostics described above. Inventory the authoritative MJML specification,
    assess renderer support, and propose implementation and verification before
    starting this expansion.
+3. **Runtime-hydrated templates.** Design reusable templates with typed slots
+   for text, URLs, headers, and any other supported contexts. The binding API
+   should reject missing or mismatched values, escape at the actual MJML sink,
+   and keep unbound templates distinct from renderable ones. Measure compilation,
+   hydration, and rendering costs before choosing a cache or engine. Do not
+   substitute strings into finished MJML or HTML: that loses context. Candidate
+   crates: `upon` supports compilation and reusable templates but defaults to
+   unescaped output; MiniJinja supports automatic HTML escaping but it depends
+   on template naming/context and its language is broader; TinyTemplate is
+   small and HTML-escapes values but does not encode Manteau's separate URL and
+   attribute contracts. A small structural slot engine may fit better than a
+   general text engine. Sources:
+   - https://docs.rs/upon/latest/upon/struct.Engine.html
+   - https://docs.rs/minijinja/latest/minijinja/struct.Environment.html
+   - https://docs.rs/tinytemplate/latest/tinytemplate/

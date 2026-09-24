@@ -27,7 +27,7 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
   let login_url = Url::try_parse("https://example.com/login")?;
 
   let body = Body::new()
-    .background_color(Color::hex(0xfafafa))
+    .background_color(Color::hex(0xfafafa).unwrap())
     .push(
       Section::new()
         .padding(
@@ -38,16 +38,16 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
         .push(
           Column::new().push(
             Text::new("Example Travel")
-              .font_family(FontFamily::new("Arial, sans-serif"))
+              .font_family(FontFamily::new("Arial, sans-serif").unwrap())
               .font_size(Pixels::new(22))
               .font_weight(FontWeight::Bold)
-              .color(Color::hex(0x1c1917)),
+              .color(Color::hex(0x1c1917).unwrap()),
           ),
         ),
     )
     .push(
       Wrapper::new()
-        .background_color(Color::hex(0xffffff))
+        .background_color(Color::hex(0xffffff).unwrap())
         .border_radius(Pixels::new(8))
         .padding_top(Pixels::new(32))
         .padding_right(Pixels::new(32))
@@ -60,7 +60,7 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
                 Text::new("Welcome")
                   .font_size(Pixels::new(20))
                   .font_weight(FontWeight::Bold)
-                  .color(Color::hex(0x1c1917)),
+                  .color(Color::hex(0x1c1917).unwrap()),
               )
               .push(
                 Text::new(format!(
@@ -68,14 +68,14 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
                    password below to sign in for the first time."
                 ))
                 .font_size(Pixels::new(15))
-                .color(Color::hex(0x57534e)),
+                .color(Color::hex(0x57534e).unwrap()),
               ),
           ),
         )
         .push(
           Section::new().padding(PaddingOptions::default()).push(
             Column::new()
-              .background_color(Color::hex(0xf5f5f4))
+              .background_color(Color::hex(0xf5f5f4).unwrap())
               .border_radius(Pixels::new(8))
               .padding_top(Pixels::new(16))
               .padding_right(Pixels::new(20))
@@ -85,7 +85,7 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
                 Text::new(temp_password)
                   .font_family(FontFamily::new(
                     "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  ))
+                  ).unwrap())
                   .font_weight(FontWeight::Bold)
                   .font_size(Pixels::new(14)),
               ),
@@ -95,8 +95,8 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
           Section::new().padding(PaddingOptions::default()).push(
             Column::new().padding_top(Pixels::new(16)).push(
               Button::new("Sign In", login_url)
-                .background_color(Color::hex(0x292524))
-                .color(Color::hex(0xfafaf9))
+                .background_color(Color::hex(0x292524).unwrap())
+                .color(Color::hex(0xfafaf9).unwrap())
                 .border_radius(Pixels::new(8))
                 .font_size(Pixels::new(14))
                 .font_weight(FontWeight::SemiBold)

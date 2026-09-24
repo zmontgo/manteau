@@ -85,13 +85,13 @@ pub enum BodyKind {
 #[derive(Debug, Clone)]
 pub struct Attr {
   /// The original kebab-case name as written in source.
-  pub name:      String,
+  pub(crate) name:      String,
   /// Span of the name token, for error reporting.
-  pub name_span: Span,
+  pub(crate) name_span: Span,
   /// The attribute's value. Always a string literal or braced expression
   /// in source syntax; the `values` module turns string literals into
   /// typed expressions where it can recognize the contents.
-  pub value:     AttrValue,
+  pub(crate) value:     AttrValue,
 }
 
 #[derive(Debug, Clone)]
@@ -143,9 +143,9 @@ pub enum Node {
 
 #[derive(Debug, Clone)]
 pub struct MatchArm {
-  pub pat:   syn::Pat,
-  pub guard: Option<Expr>,
-  pub body:  Vec<Node>,
+  pub(crate) pat:   syn::Pat,
+  pub(crate) guard: Option<Expr>,
+  pub(crate) body:  Vec<Node>,
 }
 
 /// One part of text-bodied element content. At codegen time the parts are
@@ -187,18 +187,18 @@ pub enum TextPart {
 /// text fragments, not container children.
 #[derive(Debug, Clone)]
 pub struct TextMatchArm {
-  pub pat:   syn::Pat,
-  pub guard: Option<Expr>,
-  pub body:  Vec<TextPart>,
+  pub(crate) pat:   syn::Pat,
+  pub(crate) guard: Option<Expr>,
+  pub(crate) body:  Vec<TextPart>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Element {
-  pub kind:     TagKind,
+  pub(crate) kind:     TagKind,
   /// Span of the opening tag identifier, for error reporting.
-  pub tag_span: Span,
-  pub attrs:    Vec<Attr>,
-  pub body:     ElementBody,
+  pub(crate) tag_span: Span,
+  pub(crate) attrs:    Vec<Attr>,
+  pub(crate) body:     ElementBody,
 }
 
 #[derive(Debug, Clone)]

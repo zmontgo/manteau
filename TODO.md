@@ -137,20 +137,13 @@ and submission, without inventing a query-engine-shaped layer.
   - Test custom renderer/transport composition, exactly one render per prepared
     message, failed-send recovery retaining identical content, and mock usage.
 
-- [ ] 7. **Value contracts, ownership, and extension boundaries** — next change.
+- [x] 7. **Value contracts, ownership, and extension boundaries** — current change.
   - Audit public fields across every workspace crate, including `Body`, all
     MJML elements, envelopes, provider models, and configuration. Make
     invariant-bearing state private; provide owner methods for legitimate
     inspection and changes. Direct field mutation must be justified by the
     type's actual contract, not convenience. Check serde and macro construction
     paths as alternate constructors.
-  - Make templates reusable for runtime hydration: analyze typed placeholders
-    for text, URL, subject, and other supported roles, the binding API,
-    missing/extra binding errors, compiled representation, reuse and caching
-    costs, and escaping at the final sink. Compare a small structural slot
-    engine with `upon`, MiniJinja, and TinyTemplate. Do not interpolate into
-    already rendered HTML or expose an arbitrary `String` context. Implement
-    the chosen safe path with focused reuse/injection tests.
   - Audit every port argument and result (`Renderer`, `Http`, `HttpProvider`,
     `Transport`) for primitive or generic values whose meaning makes callers
     recheck them. Introduce owner types with private state and checked
@@ -172,14 +165,29 @@ and submission, without inventing a query-engine-shaped layer.
     state, typed nesting, validated markup names, escaped content, and accurate
     custom-element obligations. No claim that arbitrary downstream implementations
     are statically proven correct.
-  - All non-procedural-macro source and test helpers: move verbs to meaningful
-    data/configuration owners or inline them; no empty namespace structs. Rust
-    test entry points are the other explicit exception. No main functions.
   - Compile-fail tests for invalid construction/nesting/mutation and runtime
     boundary tests for untrusted strings and persistence. Do not add MJML tags
     from the deferred full-coverage request.
+  - Decision: keep `HttpProvider::Payload` as a provider-owned concrete
+    serialization type because core's only operation on it is JSON encoding;
+    the resulting `JsonBody` and bounded response are core-owned checked
+    values. `HtmlBody` promises nonempty, control-safe email markup, not
+    sanitized HTML. `safehtml::SafeHtml` is suitable to evaluate for trusted
+    HTML fragments at a future insertion boundary; its stronger XSS contract
+    would be false for arbitrary MJML-rendered output. `SafeUrl` is a useful
+    candidate for links, while Manteau currently needs its narrower email-link
+    and image-source policies.
 
-- [ ] 8. **Existing macro hygiene and contract parity**.
+- [ ] 8. **Test helper ownership** — next change.
+  - Replace bare fixture/helper functions in `manteau/tests/`, core tests,
+    and provider protocol tests with meaningful owner methods or local test
+    bodies. Keep `#[test]` and `#[tokio::test]` entry points as the explicit
+    exception. Avoid empty namespace structs and new traits used only to
+    disguise a helper. Keep tests focused on behavior, not wrapper mechanics.
+  - Confirm all non-procedural-macro production source has no bare functions
+    and no binary `main` entry points.
+
+- [ ] 9. **Existing macro hygiene and contract parity**.
   - `manteau-macros/src/`: resolve renamed consumer dependencies, preserve spans,
     and generate calls to the authoritative checked types. Fix existing literal
     validation drift and ensure no expansion-time accepted input can panic during
@@ -189,7 +197,7 @@ and submission, without inventing a query-engine-shaped layer.
   - Broader diagnostics research and complete tag/attribute coverage remain in
     SCRATCHPAD.md; do not incorporate them into this block.
 
-- [ ] 9. **Published-library documentation and examples**.
+- [ ] 10. **Published-library documentation and examples**.
   - Add `#![deny(missing_docs)]` to every library crate and document each
     public crate, module, type, variant, field, method, and extension point to
     a useful depth. Treat the lint as a release gate, not a local exception.
@@ -211,7 +219,7 @@ and submission, without inventing a query-engine-shaped layer.
     together only where that improves comprehension. Run rustfmt after edits;
     formatting alone does not provide the requested visual grouping.
 
-- [ ] 10. **Release verification and measured optimization**.
+- [ ] 11. **Release verification and measured optimization**.
   - Root manifests/Cargo.lock: consistent 0.2 versions, workspace dependency
     graph, minimal production dependencies, correct independent package metadata.
   - `.github/workflows/ci.yml`: workspace and independent-package checks, supported

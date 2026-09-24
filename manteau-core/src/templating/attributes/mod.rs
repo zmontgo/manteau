@@ -21,15 +21,14 @@ mod tests {
 
   #[test]
   fn color_hex_24bit() {
-    assert_eq!(Color::hex(0xff0000).to_string(), "#ff0000");
-    assert_eq!(Color::hex(0x00ff00).to_string(), "#00ff00");
-    assert_eq!(Color::hex(0x000001).to_string(), "#000001");
+    assert_eq!(Color::hex(0xff0000).unwrap().to_string(), "#ff0000");
+    assert_eq!(Color::hex(0x00ff00).unwrap().to_string(), "#00ff00");
+    assert_eq!(Color::hex(0x000001).unwrap().to_string(), "#000001");
   }
 
   #[test]
-  fn color_hex_masks_high_bits() {
-    // Bits above 24 are stripped, not error.
-    assert_eq!(Color::hex(0xff_ff_00_00).to_string(), "#ff0000");
+  fn color_hex_rejects_high_bits() {
+    assert!(Color::hex(0xff_ff_00_00).is_err());
   }
 
   #[test]
@@ -92,10 +91,10 @@ mod tests {
   }
 
   #[test]
-  fn font_family_passthrough() {
-    let ff = FontFamily::new("Helvetica, Arial, sans-serif");
+  fn font_family_validation() {
+    let ff = FontFamily::new("Helvetica, Arial, sans-serif").unwrap();
     assert_eq!(ff.to_string(), "Helvetica, Arial, sans-serif");
-    let from: FontFamily = "Georgia".into();
-    assert_eq!(from.to_string(), "Georgia");
+    assert!(FontFamily::new("Arial; color:red").is_err());
+    assert!(FontFamily::new("Arial, ").is_err());
   }
 }

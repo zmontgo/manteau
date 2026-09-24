@@ -123,6 +123,8 @@ fn gen_setter_call(attr: &Attr) -> syn::Result<TokenStream> {
 
 fn gen_attr_value(attr: &Attr) -> syn::Result<TokenStream> {
   match &attr.value {
+    AttrValue::StringLit(lit) if attr.name == "src" => values::parse_image_url(lit),
+    AttrValue::StringLit(lit) if attr.name == "font-family" => values::parse_font_family(lit),
     AttrValue::StringLit(lit) => values::parse_value(lit),
     AttrValue::Expr(expr) => Ok(quote_spanned! { attr.name_span => #expr }),
   }

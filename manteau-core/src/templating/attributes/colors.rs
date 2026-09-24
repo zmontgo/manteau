@@ -16,14 +16,18 @@ impl ColorError {
 }
 
 impl Color {
-  /// Build a color from a 24-bit RGB value. `0xff0000` becomes `#ff0000`.
-  /// Bits above the low 24 are ignored.
+  /// Build a color from a 24-bit RGB value. Reject bits outside that range.
   ///
   /// ```
   /// # use manteau_core::templating::attributes::colors::Color;
-  /// assert_eq!(Color::hex(0xff0000).to_string(), "#ff0000");
+  /// assert_eq!(Color::hex(0xff0000).unwrap().to_string(), "#ff0000");
   /// ```
-  pub fn hex(rgb: u32) -> Self { Self(format!("#{:06x}", rgb & 0x00ff_ffff)) }
+  pub fn hex(rgb: u32) -> Result<Self, ColorError> {
+    if rgb > 0x00ff_ffff {
+      return Err(ColorError { input: format!("0x{rgb:x}") });
+    }
+    Ok(Self(format!("#{rgb:06x}")))
+  }
 
   /// Parse a hex (`#rgb`, `#rrggbb`, `#rgba`, `#rrggbbaa`) or named color.
   ///
@@ -35,7 +39,7 @@ impl Color {
   /// ```
   pub fn try_parse(s: &str) -> Result<Self, ColorError> {
     let s = s.trim();
-    if is_valid_hex(s) || is_valid_name(s) {
+    if Self::is_valid_hex(s) || Self::is_valid_name(s) {
       Ok(Self(s.to_string()))
     } else {
       Err(ColorError {
@@ -44,24 +48,24 @@ impl Color {
     }
   }
 
-  /// Wrap a CSS named color (`red`, `cornflowerblue`, ...). Validation here
-  /// is shape-only — alphabetic characters, no claim about whether the
-  /// browser knows the name.
+  /// Accept a CSS named color only when the CSS color parser recognizes it.
   pub fn named(name: &str) -> Result<Self, ColorError> { Self::try_parse(name) }
 
   pub fn as_str(&self) -> &str { &self.0 }
-}
 
-fn is_valid_hex(s: &str) -> bool {
-  let Some(rest) = s.strip_prefix('#') else {
-    return false;
-  };
-  matches!(rest.len(), 3 | 4 | 6 | 8)
-    && rest.chars().all(|c| c.is_ascii_hexdigit())
-}
+  fn is_valid_hex(s: &str) -> bool {
+    let Some(rest) = s.strip_prefix('#') else {
+      return false;
+    };
+    matches!(rest.len(), 3 | 4 | 6 | 8)
+      && rest.chars().all(|c| c.is_ascii_hexdigit())
+  }
 
-fn is_valid_name(s: &str) -> bool {
-  !s.is_empty() && s.chars().all(|c| c.is_ascii_alphabetic())
+  fn is_valid_name(s: &str) -> bool {
+    !s.is_empty()
+      && s.chars().all(|c| c.is_ascii_alphabetic())
+      && csscolorparser::parse(s).is_ok()
+  }
 }
 
 impl FromStr for Color {

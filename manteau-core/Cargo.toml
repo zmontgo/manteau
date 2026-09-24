@@ -27,6 +27,7 @@ tracing.workspace = true
 validator.workspace = true
 askama_escape.workspace = true
 url.workspace = true
+csscolorparser = { version = "0.8.4", default-features = false, features = ["named-colors"] }
 
 [dev-dependencies]
 serde_json.workspace = true

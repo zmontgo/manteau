@@ -29,7 +29,7 @@ impl Block {
   ///
   /// ```
   /// use manteau_core::{
-  ///   render::MjmlWriter,
+  ///   render::{ElementName, MjmlWriter},
   ///   templating::{Block, Element},
   /// };
   ///
@@ -38,7 +38,7 @@ impl Block {
   ///
   /// impl Element for MyDivider {
   ///   fn write_mjml(&self, w: &mut MjmlWriter) {
-  ///     w.open("mj-divider").close_self();
+  ///     w.open(ElementName::custom("mj-divider").unwrap()).close_self();
   ///   }
   /// }
   ///

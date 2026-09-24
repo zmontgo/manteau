@@ -169,11 +169,23 @@ impl Address {
 /// Provider-specific in meaning — Mailjet returns a numeric string, stdout
 /// returns a counter, mock returns a fixed marker. The type carries intent
 /// (this string is a message id) without making claims about its format.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct MessageId(String);
 
+/// A provider identifier was empty or contained a control character.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("invalid provider message identifier")]
+pub struct InvalidMessageId;
+
 impl MessageId {
-  pub fn new(s: impl Into<String>) -> Self { Self(s.into()) }
+  /// Admit a provider-assigned identifier without assuming its format.
+  pub fn new(s: impl Into<String>) -> Result<Self, InvalidMessageId> {
+    let value = s.into();
+    if value.is_empty() || value.chars().any(char::is_control) {
+      return Err(InvalidMessageId);
+    }
+    Ok(Self(value))
+  }
 
   pub fn as_str(&self) -> &str { &self.0 }
 }
@@ -186,6 +198,12 @@ impl std::fmt::Display for MessageId {
 
 impl AsRef<str> for MessageId {
   fn as_ref(&self) -> &str { &self.0 }
+}
+
+impl std::fmt::Debug for MessageId {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("MessageId([redacted])")
+  }
 }
 
 impl std::fmt::Debug for EmailAddress {
@@ -239,7 +257,7 @@ mod tests {
 
   #[test]
   fn message_id_display() {
-    let id = MessageId::new("abc123");
+    let id = MessageId::new("abc123").unwrap();
     assert_eq!(id.to_string(), "abc123");
     assert_eq!(id.as_str(), "abc123");
   }

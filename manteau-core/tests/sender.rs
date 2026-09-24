@@ -30,7 +30,7 @@ impl Http for CountingHttp {
       serde_json::from_slice(request.body()).unwrap();
     assert_eq!(payload["subject"], "A subject");
     self.calls.fetch_add(1, Ordering::SeqCst);
-    Ok(HttpResponse::new(self.status, None, b"{}".to_vec()))
+    request.response(self.status, None, b"{}".to_vec())
   }
 }
 
@@ -95,10 +95,8 @@ impl HttpProvider for AdmissionProtocol {
   }
 
   fn status_policy(&self) -> StatusPolicy {
-    StatusPolicy {
-      handled:      &[201],
-      not_accepted: &[400],
-    }
+    const POLICY: StatusPolicy = StatusPolicy::new(&[201], &[400]);
+    POLICY
   }
 
   fn request<'a>(

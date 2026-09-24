@@ -40,13 +40,13 @@ impl Http for HttpClient {
     &self,
     request: HttpRequest<'_>,
   ) -> Result<HttpResponse, HttpError> {
-    let (config, credentials, key, body) = request.into_parts();
+    let (config, credentials, key, body, response_guard) = request.into_parts();
     let mut outgoing = self
       .client
       .post(config.endpoint())
       .timeout(config.request_timeout())
       .header(reqwest::header::CONTENT_TYPE, "application/json")
-      .body(body);
+      .body(body.into_bytes());
 
     if let Some(token) = credentials.bearer_token() {
       outgoing = outgoing.bearer_auth(token);
@@ -103,6 +103,6 @@ impl Http for HttpClient {
       body.extend_from_slice(&chunk);
     }
 
-    Ok(HttpResponse::new(status, retry_after, body))
+    response_guard.response(status, retry_after, body)
   }
 }

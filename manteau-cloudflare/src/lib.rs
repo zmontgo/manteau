@@ -170,12 +170,12 @@ impl Response {
         return Err(CloudflareErrorKind::Response.error());
       }
     }
-    if observed != expected || result.message_id.chars().any(char::is_control) {
+    if observed != expected {
       return Err(CloudflareErrorKind::Response.error());
     }
     let mut ids = Vec::new();
     if !result.message_id.is_empty() {
-      ids.push(MessageId::new(result.message_id));
+      ids.push(MessageId::new(result.message_id).map_err(|_| CloudflareErrorKind::Response.error())?);
     } else if !result.delivered.is_empty() || !result.queued.is_empty() {
       return Err(CloudflareErrorKind::Response.error());
     }
@@ -207,10 +207,8 @@ impl HttpProvider for Cloudflare {
   }
 
   fn status_policy(&self) -> StatusPolicy {
-    StatusPolicy {
-      handled:      &[200],
-      not_accepted: &[401, 403],
-    }
+    const POLICY: StatusPolicy = StatusPolicy::new(&[200], &[401, 403]);
+    POLICY
   }
 
   fn request<'a>(

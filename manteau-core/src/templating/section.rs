@@ -6,15 +6,24 @@ use crate::{
 /// `mj-section` — horizontal row of [`Column`]s in a [`Body`].
 ///
 /// [`Body`]: crate::templating::body::Body
-#[non_exhaustive]
 #[derive(Debug, Clone, Default)]
 pub struct Section {
-  pub columns:          Vec<Column>,
-  pub background_color: Option<Color>,
-  pub padding:          PaddingOptions,
+  columns:          Vec<Column>,
+  background_color: Option<Color>,
+  padding:          PaddingOptions,
 }
 
 impl Section {
+  pub(crate) fn push_column(mut self, column: Column) -> Self {
+    self.columns.push(column);
+    self
+  }
+
+  /// Direct columns in rendering order.
+  pub fn column_items(&self) -> &[Column] { &self.columns }
+
+  /// Configured section background color.
+  pub fn configured_background_color(&self) -> Option<&Color> { self.background_color.as_ref() }
   pub fn new() -> Self { Self::default() }
 
   pub fn columns(mut self, columns: Vec<Column>) -> Self {
@@ -55,12 +64,12 @@ impl Section {
 
 impl Element for Section {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mj-section")
-      .attr("background-color", self.background_color.as_ref())
-      .attr("padding-top", self.padding.top())
-      .attr("padding-right", self.padding.right())
-      .attr("padding-bottom", self.padding.bottom())
-      .attr("padding-left", self.padding.left())
+    w.open(crate::render::ElementName::builtin("mj-section"))
+      .attr(crate::render::AttributeName::builtin("background-color"), self.background_color.as_ref())
+      .attr(crate::render::AttributeName::builtin("padding-top"), self.padding.top())
+      .attr(crate::render::AttributeName::builtin("padding-right"), self.padding.right())
+      .attr(crate::render::AttributeName::builtin("padding-bottom"), self.padding.bottom())
+      .attr(crate::render::AttributeName::builtin("padding-left"), self.padding.left())
       .children(|w| {
         for column in &self.columns {
           column.write_mjml(w);

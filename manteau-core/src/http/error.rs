@@ -16,6 +16,9 @@ pub enum HttpError {
   /// Response exceeded the configured byte limit; acceptance remains unknown.
   #[error("HTTP response exceeded its size limit")]
   ResponseLimit,
+  /// Driver returned a status outside the HTTP response status range.
+  #[error("invalid HTTP response status")]
+  InvalidResponseStatus,
   /// Response did not match the documented representation.
   #[error("invalid provider response")]
   Decode(#[source] serde_json::Error),

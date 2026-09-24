@@ -4,22 +4,30 @@ use crate::{
 };
 
 /// `mj-text` — paragraph or run of styled text.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Text {
-  pub content:        String,
-  pub color:          Option<Color>,
-  pub font_size:      Option<Pixels>,
-  pub font_family:    Option<FontFamily>,
-  pub align:          Option<Alignment>,
-  pub font_weight:    Option<FontWeight>,
-  pub line_height:    Option<LineHeight>,
-  pub letter_spacing: Option<Measurement>,
-  pub text_transform: Option<TextTransform>,
-  pub padding:        PaddingOptions,
+  content:        String,
+  color:          Option<Color>,
+  font_size:      Option<Pixels>,
+  font_family:    Option<FontFamily>,
+  align:          Option<Alignment>,
+  font_weight:    Option<FontWeight>,
+  line_height:    Option<LineHeight>,
+  letter_spacing: Option<Measurement>,
+  text_transform: Option<TextTransform>,
+  padding:        PaddingOptions,
 }
 
 impl Text {
+  /// Text content before MJML escaping.
+  pub fn content(&self) -> &str { &self.content }
+
+  /// Configured text color.
+  pub fn configured_color(&self) -> Option<&Color> { self.color.as_ref() }
+
+  /// Configured text size.
+  pub fn configured_font_size(&self) -> Option<Pixels> { self.font_size }
+
   pub fn new(content: impl Into<String>) -> Self {
     Self {
       content:        content.into(),
@@ -45,8 +53,8 @@ impl Text {
     self
   }
 
-  pub fn font_family(mut self, family: impl Into<FontFamily>) -> Self {
-    self.font_family = Some(family.into());
+  pub fn font_family(mut self, family: FontFamily) -> Self {
+    self.font_family = Some(family);
     self
   }
 
@@ -103,19 +111,19 @@ impl Text {
 
 impl Element for Text {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mj-text")
-      .attr("color", self.color.as_ref())
-      .attr("font-size", self.font_size.as_ref())
-      .attr("font-family", self.font_family.as_ref())
-      .attr("align", self.align.as_ref())
-      .attr("font-weight", self.font_weight.as_ref())
-      .attr("line-height", self.line_height.as_ref())
-      .attr("letter-spacing", self.letter_spacing.as_ref())
-      .attr("text-transform", self.text_transform.as_ref())
-      .attr("padding-top", self.padding.top())
-      .attr("padding-right", self.padding.right())
-      .attr("padding-bottom", self.padding.bottom())
-      .attr("padding-left", self.padding.left())
+    w.open(crate::render::ElementName::builtin("mj-text"))
+      .attr(crate::render::AttributeName::builtin("color"), self.color.as_ref())
+      .attr(crate::render::AttributeName::builtin("font-size"), self.font_size.as_ref())
+      .attr(crate::render::AttributeName::builtin("font-family"), self.font_family.as_ref())
+      .attr(crate::render::AttributeName::builtin("align"), self.align.as_ref())
+      .attr(crate::render::AttributeName::builtin("font-weight"), self.font_weight.as_ref())
+      .attr(crate::render::AttributeName::builtin("line-height"), self.line_height.as_ref())
+      .attr(crate::render::AttributeName::builtin("letter-spacing"), self.letter_spacing.as_ref())
+      .attr(crate::render::AttributeName::builtin("text-transform"), self.text_transform.as_ref())
+      .attr(crate::render::AttributeName::builtin("padding-top"), self.padding.top())
+      .attr(crate::render::AttributeName::builtin("padding-right"), self.padding.right())
+      .attr(crate::render::AttributeName::builtin("padding-bottom"), self.padding.bottom())
+      .attr(crate::render::AttributeName::builtin("padding-left"), self.padding.left())
       .text(&self.content);
   }
 }

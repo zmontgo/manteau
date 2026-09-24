@@ -36,42 +36,27 @@ pub trait Push<Child> {
 // ─── Body accepts Section, Wrapper, BodyChild ────────────────────────────
 
 impl Push<Section> for Body {
-  fn push(mut self, child: Section) -> Self {
-    self.children.push(BodyChild::Section(child));
-    self
-  }
+  fn push(self, child: Section) -> Self { self.push_child(BodyChild::Section(child)) }
 }
 
 impl Push<Wrapper> for Body {
-  fn push(mut self, child: Wrapper) -> Self {
-    self.children.push(BodyChild::Wrapper(child));
-    self
-  }
+  fn push(self, child: Wrapper) -> Self { self.push_child(BodyChild::Wrapper(child)) }
 }
 
 impl Push<BodyChild> for Body {
-  fn push(mut self, child: BodyChild) -> Self {
-    self.children.push(child);
-    self
-  }
+  fn push(self, child: BodyChild) -> Self { self.push_child(child) }
 }
 
 // ─── Wrapper accepts Section ─────────────────────────────────────────────
 
 impl Push<Section> for Wrapper {
-  fn push(mut self, child: Section) -> Self {
-    self.sections.push(child);
-    self
-  }
+  fn push(self, child: Section) -> Self { self.push_section(child) }
 }
 
 // ─── Section accepts Column ──────────────────────────────────────────────
 
 impl Push<Column> for Section {
-  fn push(mut self, child: Column) -> Self {
-    self.columns.push(child);
-    self
-  }
+  fn push(self, child: Column) -> Self { self.push_column(child) }
 }
 
 // ─── Column accepts anything Into<Block> ─────────────────────────────────
@@ -82,8 +67,5 @@ impl Push<Column> for Section {
 // wrapping themselves into a `Block::Custom` and pushing that.
 
 impl<T: Into<Block>> Push<T> for Column {
-  fn push(mut self, child: T) -> Self {
-    self.children.push(child.into());
-    self
-  }
+  fn push(self, child: T) -> Self { self.push_block(child.into()) }
 }

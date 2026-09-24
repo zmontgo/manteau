@@ -1,14 +1,12 @@
 use std::str::FromStr;
 
-use validator::ValidateUrl;
-
-/// A URL validated at construction. Backed by the `validator` crate's
-/// `ValidateUrl`, which itself delegates to the `url` crate's parser.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// An absolute email link using HTTPS, HTTP, mailto, or tel.
+/// Script, data, file, and credential-bearing URLs are rejected.
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Url(String);
 
-#[derive(Debug, thiserror::Error)]
-#[error("invalid url: {input}")]
+#[derive(thiserror::Error)]
+#[error("invalid email URL")]
 pub struct UrlError {
   input: String,
 }
@@ -17,10 +15,20 @@ impl UrlError {
   pub fn input(&self) -> &str { &self.input }
 }
 
+impl std::fmt::Debug for UrlError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    std::fmt::Display::fmt(self, f)
+  }
+}
+
+impl std::fmt::Debug for Url {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("Url([redacted])")
+  }
+}
+
 impl Url {
-  /// Parse and validate a URL string. Accepts any absolute URL the
-  /// `validator` crate's HTML5-spec check considers well-formed —
-  /// `https://`, `http://`, `mailto:`, `tel:` schemes all pass.
+  /// Parse an absolute URL with a supported email-link scheme.
   ///
   /// ```
   /// # use manteau_core::templating::attributes::urls::Url;
@@ -30,13 +38,21 @@ impl Url {
   /// ```
   pub fn try_parse(s: &str) -> Result<Self, UrlError> {
     let s = s.trim();
-    if s.validate_url() {
-      Ok(Self(s.to_string()))
-    } else {
-      Err(UrlError {
-        input: s.to_string(),
-      })
+    let invalid = || UrlError { input: s.to_string() };
+    if s.is_empty() || s.chars().any(char::is_control) {
+      return Err(invalid());
     }
+
+    let parsed = url::Url::parse(s).map_err(|_| invalid())?;
+    match parsed.scheme() {
+      "http" | "https" if parsed.host().is_some()
+        && parsed.username().is_empty()
+        && parsed.password().is_none() => {}
+      "mailto" | "tel" if !parsed.path().is_empty() => {}
+      _ => return Err(invalid()),
+    }
+
+    Ok(Self(parsed.into()))
   }
 
   pub fn as_str(&self) -> &str { &self.0 }
@@ -68,6 +84,39 @@ impl std::fmt::Display for Url {
 
 impl AsRef<str> for Url {
   fn as_ref(&self) -> &str { &self.0 }
+}
+
+/// A network image source. Email links may use `mailto:` or `tel:`, but an
+/// image source must use HTTP or HTTPS.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ImageUrl(Url);
+
+impl ImageUrl {
+  /// Parse and admit an HTTP(S) image source.
+  pub fn try_parse(value: &str) -> Result<Self, UrlError> {
+    Self::try_from(Url::try_parse(value)?)
+  }
+
+  /// Canonical absolute image URL.
+  pub fn as_str(&self) -> &str { self.0.as_str() }
+}
+
+impl TryFrom<Url> for ImageUrl {
+  type Error = UrlError;
+
+  fn try_from(value: Url) -> Result<Self, Self::Error> {
+    if value.0.starts_with("https://") || value.0.starts_with("http://") {
+      Ok(Self(value))
+    } else {
+      Err(UrlError { input: value.0 })
+    }
+  }
+}
+
+impl std::fmt::Display for ImageUrl {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    self.as_str().fmt(f)
+  }
 }
 
 // ---------- Alignment ----------

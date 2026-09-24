@@ -1,21 +1,29 @@
-/// Font stack — open wrapper around the caller's CSS font-family string
-/// (e.g. `"Helvetica, Arial, sans-serif"`). No validation; intent only.
+/// A comma-separated font stack without CSS declaration syntax. Family names
+/// may contain letters, digits, spaces, hyphens, and underscores.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FontFamily(String);
 
 impl FontFamily {
-  pub fn new(stack: impl Into<String>) -> Self { Self(stack.into()) }
+  /// Validate a conservative font stack before it reaches inline CSS.
+  pub fn new(stack: &str) -> Result<Self, FontFamilyError> {
+    if stack.split(',').any(|name| {
+      let name = name.trim();
+      name.is_empty() || !name.chars().all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, ' ' | '-' | '_'))
+    }) {
+      return Err(FontFamilyError);
+    }
 
+    Ok(Self(stack.split(',').map(str::trim).collect::<Vec<_>>().join(", ")))
+  }
+
+  /// Canonical font stack after validation.
   pub fn as_str(&self) -> &str { &self.0 }
 }
 
-impl From<&str> for FontFamily {
-  fn from(s: &str) -> Self { Self::new(s) }
-}
-
-impl From<String> for FontFamily {
-  fn from(s: String) -> Self { Self::new(s) }
-}
+/// The font stack contains unsupported CSS or an empty family name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("invalid font family stack")]
+pub struct FontFamilyError;
 
 impl std::fmt::Display for FontFamily {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

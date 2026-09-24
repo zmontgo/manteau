@@ -49,10 +49,8 @@ impl HttpProvider for JetEmail {
   }
 
   fn status_policy(&self) -> StatusPolicy {
-    StatusPolicy {
-      handled:      &[201, 409],
-      not_accepted: &[401, 403],
-    }
+    const POLICY: StatusPolicy = StatusPolicy::new(&[201, 409], &[401, 403]);
+    POLICY
   }
 
   fn request<'a>(
@@ -86,14 +84,11 @@ impl HttpProvider for JetEmail {
     }
     let accepted: Accepted =
       response.decode().map_err(JetEmailError::decode)?;
-    if accepted.id.is_empty()
-      || accepted.id.len() > 998
-      || accepted.id.chars().any(char::is_control)
-    {
+    if accepted.id.len() > 998 {
       return Err(JetEmailErrorKind::Response.error());
     }
     Ok(JetEmailReceipt {
-      ids: [MessageId::new(accepted.id)],
+      ids: [MessageId::new(accepted.id).map_err(|_| JetEmailErrorKind::Response.error())?],
     })
   }
 }

@@ -35,16 +35,37 @@ impl Element for BodyChild {
 
 /// `mj-body` — top-level container of [`Section`]s and/or [`Wrapper`]s.
 /// Children render in declared order.
-#[non_exhaustive]
+///
+/// ```compile_fail
+/// use manteau_core::templating::Body;
+/// let mut body = Body::new();
+/// body.children.clear();
+/// ```
+///
+/// ```compile_fail
+/// use manteau_core::templating::{Body, Push, Text};
+/// let invalid = Body::new().push(Text::new("not a section"));
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct Body {
-  pub children:         Vec<BodyChild>,
-  pub background_color: Option<Color>,
-  pub width:            Option<Pixels>,
+  children:         Vec<BodyChild>,
+  background_color: Option<Color>,
+  width:            Option<Pixels>,
 }
 
 impl Body {
   pub fn new() -> Self { Self::default() }
+
+  pub(crate) fn push_child(mut self, child: BodyChild) -> Self {
+    self.children.push(child);
+    self
+  }
+
+  /// Direct sections and wrappers in rendering order.
+  pub fn children(&self) -> &[BodyChild] { &self.children }
+
+  /// Configured body background color.
+  pub fn configured_background_color(&self) -> Option<&Color> { self.background_color.as_ref() }
 
   /// Replace the children with a fresh `Vec` of sections. For mixed
   /// section/wrapper trees use
@@ -68,9 +89,9 @@ impl Body {
 
 impl Element for Body {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mj-body")
-      .attr("background-color", self.background_color.as_ref())
-      .attr("width", self.width.as_ref())
+    w.open(crate::render::ElementName::builtin("mj-body"))
+      .attr(crate::render::AttributeName::builtin("background-color"), self.background_color.as_ref())
+      .attr(crate::render::AttributeName::builtin("width"), self.width.as_ref())
       .children(|w| {
         for child in &self.children {
           child.write_mjml(w);

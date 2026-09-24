@@ -60,18 +60,25 @@ impl std::fmt::Display for Pixels {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Em(f32);
 
+/// A CSS dimension cannot contain NaN, infinity, or a negative value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("measurement must be finite and nonnegative")]
+pub struct InvalidMeasurement;
+
 impl Em {
   /// ```
   /// # use manteau_core::templating::attributes::prelude::*;
-  /// assert_eq!(Em::new(1.3).to_string(), "1.3em");
+  /// assert_eq!(Em::new(1.3).unwrap().to_string(), "1.3em");
+  /// assert!(Em::new(f32::NAN).is_err());
   /// ```
-  pub fn new(value: f32) -> Self { Self(value) }
+  pub fn new(value: f32) -> Result<Self, InvalidMeasurement> {
+    if !value.is_finite() || value < 0.0 {
+      return Err(InvalidMeasurement);
+    }
+    Ok(Self(value))
+  }
 
   pub fn value(self) -> f32 { self.0 }
-}
-
-impl From<f32> for Em {
-  fn from(value: f32) -> Self { Self::new(value) }
 }
 
 impl std::fmt::Display for Em {
@@ -87,15 +94,17 @@ pub struct Rem(f32);
 impl Rem {
   /// ```
   /// # use manteau_core::templating::attributes::prelude::*;
-  /// assert_eq!(Rem::new(1.3).to_string(), "1.3rem");
+  /// assert_eq!(Rem::new(1.3).unwrap().to_string(), "1.3rem");
+  /// assert!(Rem::new(f32::INFINITY).is_err());
   /// ```
-  pub fn new(value: f32) -> Self { Self(value) }
+  pub fn new(value: f32) -> Result<Self, InvalidMeasurement> {
+    if !value.is_finite() || value < 0.0 {
+      return Err(InvalidMeasurement);
+    }
+    Ok(Self(value))
+  }
 
   pub fn value(self) -> f32 { self.0 }
-}
-
-impl From<f32> for Rem {
-  fn from(value: f32) -> Self { Self::new(value) }
 }
 
 impl std::fmt::Display for Rem {
@@ -150,8 +159,31 @@ impl std::fmt::Display for Percentage {
 /// Line height options. The preferred way (according to MDN) is unitless.
 #[derive(Debug, Clone, Copy)]
 pub enum LineHeight {
-  Unitless(f32),
+  Unitless(PositiveFinite),
   Measurement(Measurement),
+}
+
+/// A finite positive ratio, suitable for unitless line height.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PositiveFinite(f32);
+
+impl PositiveFinite {
+  /// Reject zero, negative, NaN, and infinite ratios.
+  pub fn new(value: f32) -> Result<Self, InvalidMeasurement> {
+    if !value.is_finite() || value <= 0.0 {
+      return Err(InvalidMeasurement);
+    }
+    Ok(Self(value))
+  }
+
+  /// Exact ratio supplied at construction.
+  pub fn value(self) -> f32 { self.0 }
+}
+
+impl std::fmt::Display for PositiveFinite {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    self.0.fmt(f)
+  }
 }
 
 impl std::fmt::Display for LineHeight {

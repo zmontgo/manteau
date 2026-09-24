@@ -6,17 +6,26 @@ use crate::{
 /// `mj-column` — vertical stack of [`Block`]s inside a [`Section`].
 ///
 /// [`Section`]: crate::templating::section::Section
-#[non_exhaustive]
 #[derive(Debug, Clone, Default)]
 pub struct Column {
-  pub children:         Vec<Block>,
-  pub width:            Option<Percentage>,
-  pub background_color: Option<Color>,
-  pub border_radius:    Option<Measurement>,
-  pub padding:          PaddingOptions,
+  children:         Vec<Block>,
+  width:            Option<Percentage>,
+  background_color: Option<Color>,
+  border_radius:    Option<Measurement>,
+  padding:          PaddingOptions,
 }
 
 impl Column {
+  pub(crate) fn push_block(mut self, block: Block) -> Self {
+    self.children.push(block);
+    self
+  }
+
+  /// Direct leaf blocks in rendering order.
+  pub fn blocks(&self) -> &[Block] { &self.children }
+
+  /// Configured width, if any.
+  pub fn configured_width(&self) -> Option<Percentage> { self.width }
   pub fn new() -> Self { Self::default() }
 
   /// Replace the children with a whole new vec — for when you have the
@@ -72,14 +81,14 @@ impl Column {
 
 impl Element for Column {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mj-column")
-      .attr("width", self.width.as_ref())
-      .attr("background-color", self.background_color.as_ref())
-      .attr("border-radius", self.border_radius.as_ref())
-      .attr("padding-top", self.padding.top())
-      .attr("padding-right", self.padding.right())
-      .attr("padding-bottom", self.padding.bottom())
-      .attr("padding-left", self.padding.left())
+    w.open(crate::render::ElementName::builtin("mj-column"))
+      .attr(crate::render::AttributeName::builtin("width"), self.width.as_ref())
+      .attr(crate::render::AttributeName::builtin("background-color"), self.background_color.as_ref())
+      .attr(crate::render::AttributeName::builtin("border-radius"), self.border_radius.as_ref())
+      .attr(crate::render::AttributeName::builtin("padding-top"), self.padding.top())
+      .attr(crate::render::AttributeName::builtin("padding-right"), self.padding.right())
+      .attr(crate::render::AttributeName::builtin("padding-bottom"), self.padding.bottom())
+      .attr(crate::render::AttributeName::builtin("padding-left"), self.padding.left())
       .children(|w| {
         for child in &self.children {
           child.write_mjml(w);

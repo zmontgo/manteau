@@ -139,10 +139,7 @@ impl ProviderId {
       Self::Number(id) => id.to_string(),
       Self::Text(id) => id,
     };
-    if id.is_empty() || id.chars().any(char::is_control) {
-      return Err(MailjetErrorKind::Response.error());
-    }
-    Ok(MessageId::new(id))
+    MessageId::new(id).map_err(|_| MailjetErrorKind::Response.error())
   }
 }
 impl Response {
@@ -214,10 +211,8 @@ impl HttpProvider for Mailjet {
   }
 
   fn status_policy(&self) -> StatusPolicy {
-    StatusPolicy {
-      handled:      &[200],
-      not_accepted: &[400, 401, 403],
-    }
+    const POLICY: StatusPolicy = StatusPolicy::new(&[200], &[400, 401, 403]);
+    POLICY
   }
 
   fn request<'a>(

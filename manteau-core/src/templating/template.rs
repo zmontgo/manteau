@@ -6,6 +6,12 @@ use crate::{
 /// A typed MJML document with a required body and optional head content.
 /// Its fields are private so document construction stays under this type's
 /// contract as rendering features are added.
+///
+/// ```compile_fail
+/// use manteau_core::templating::{Body, Template};
+/// let mut template = Template::new(Body::new());
+/// template.body = Body::new();
+/// ```
 #[derive(Debug, Clone)]
 pub struct Template {
   body:         Body,
@@ -42,14 +48,14 @@ impl Template {
 
 impl Element for Template {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open("mjml").children(|w| {
+    w.open(crate::render::ElementName::builtin("mjml")).children(|w| {
       if self.title.is_some() || self.preview_text.is_some() {
-        w.open("mj-head").children(|w| {
+        w.open(crate::render::ElementName::builtin("mj-head")).children(|w| {
           if let Some(t) = &self.title {
-            w.open("mj-title").text(t);
+            w.open(crate::render::ElementName::builtin("mj-title")).text(t);
           }
           if let Some(p) = &self.preview_text {
-            w.open("mj-preview").text(p);
+            w.open(crate::render::ElementName::builtin("mj-preview")).text(p);
           }
         });
       }
