@@ -1,7 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use manteau_core::{
-  HtmlBody, InvalidHtmlBody, MjmlDocument, PlaintextBody, RenderErrorKind, Renderer,
+  HtmlBody, InvalidHtmlBody, MjmlDocument, PlaintextBody, RenderErrorKind,
+  Renderer,
   templating::{Body, Column, Push, Section, Template, Text},
 };
 
@@ -58,11 +59,13 @@ fn core_composes_rendering_without_a_concrete_library() {
 fn supplied_plaintext_skips_conversion_and_empty_html_is_rejected() {
   let renderer = ProbeRenderer::new("<p>hello</p>", "unused");
   let template = Template::new(
-      Body::new()
-        .push(Section::new().push(Column::new().push(Text::new("hello")))),
-    );
+    Body::new()
+      .push(Section::new().push(Column::new().push(Text::new("hello")))),
+  );
   let supplied = PlaintextBody::new("supplied").unwrap();
-  let rendered = template.render_with_text(&renderer, Some(&supplied)).unwrap();
+  let rendered = template
+    .render_with_text(&renderer, Some(&supplied))
+    .unwrap();
 
   assert_eq!(rendered.text(), "supplied");
   assert_eq!(renderer.html_calls.load(Ordering::SeqCst), 1);
@@ -70,7 +73,8 @@ fn supplied_plaintext_skips_conversion_and_empty_html_is_rejected() {
 
   let empty = ProbeRenderer::new("", "");
   let template = Template::new(
-    Body::new().push(Section::new().push(Column::new().push(Text::new("hello"))))
+    Body::new()
+      .push(Section::new().push(Column::new().push(Text::new("hello")))),
   );
   let error = template.render(&empty).unwrap_err();
   assert_eq!(error.kind(), RenderErrorKind::Html);

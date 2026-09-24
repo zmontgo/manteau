@@ -1,4 +1,6 @@
 //! In-memory capture of prepared mail. Nothing is delivered or rerendered.
+#![deny(missing_docs)]
+
 use std::{convert::Infallible, sync::Mutex};
 
 use async_trait::async_trait;
@@ -8,9 +10,12 @@ use manteau_core::{MessageId, PreparedMessage, Receipt, Transport};
 pub struct MockTransport {
   sent: Mutex<Vec<PreparedMessage>>,
 }
+
 impl MockTransport {
   /// Create an empty capture.
-  pub fn new() -> Self { Self::default() }
+  pub fn new() -> Self {
+    Self::default()
+  }
 
   /// Snapshot captured submissions without copying their bodies.
   pub fn sent(&self) -> Vec<PreparedMessage> {
@@ -22,12 +27,16 @@ impl MockTransport {
     std::mem::take(&mut *self.sent.lock().expect("capture mutex poisoned"))
   }
 }
+
 /// Evidence of local capture only. There is no provider-assigned message ID.
 #[derive(Debug)]
 pub struct MockReceipt;
 impl Receipt for MockReceipt {
-  fn ids(&self) -> &[MessageId] { &[] }
+  fn ids(&self) -> &[MessageId] {
+    &[]
+  }
 }
+
 #[async_trait]
 impl Transport for MockTransport {
   type Error = Infallible;

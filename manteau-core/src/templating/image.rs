@@ -28,8 +28,11 @@ pub struct Image {
 
 impl Image {
   /// Checked image source URL.
-  pub fn src(&self) -> &ImageUrl { &self.src }
+  pub fn src(&self) -> &ImageUrl {
+    &self.src
+  }
 
+  /// Create an image from an admitted HTTP(S) source.
   pub fn new(src: ImageUrl) -> Self {
     Self {
       src,
@@ -39,16 +42,19 @@ impl Image {
     }
   }
 
+  /// Set alternative text for clients that do not display the image.
   pub fn alt(mut self, alt: impl Into<String>) -> Self {
     self.alt = Some(alt.into());
     self
   }
 
+  /// Set the checked link destination.
   pub fn href(mut self, href: impl Into<Url>) -> Self {
     self.href = Some(href.into());
     self
   }
 
+  /// Set the width in the dimension accepted by this element.
   pub fn width(mut self, width: impl Into<Pixels>) -> Self {
     self.width = Some(width.into());
     self
@@ -58,10 +64,22 @@ impl Image {
 impl Element for Image {
   fn write_mjml(&self, w: &mut MjmlWriter) {
     w.open(crate::render::ElementName::builtin("mj-image"))
-      .attr(crate::render::AttributeName::builtin("src"), Some(&self.src))
-      .attr(crate::render::AttributeName::builtin("alt"), self.alt.as_ref())
-      .attr(crate::render::AttributeName::builtin("href"), self.href.as_ref())
-      .attr(crate::render::AttributeName::builtin("width"), self.width.as_ref())
+      .attr(
+        crate::render::AttributeName::builtin("src"),
+        Some(&self.src),
+      )
+      .attr(
+        crate::render::AttributeName::builtin("alt"),
+        self.alt.as_ref(),
+      )
+      .attr(
+        crate::render::AttributeName::builtin("href"),
+        self.href.as_ref(),
+      )
+      .attr(
+        crate::render::AttributeName::builtin("width"),
+        self.width.as_ref(),
+      )
       .close_self();
   }
 }

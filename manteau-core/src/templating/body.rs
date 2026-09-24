@@ -12,16 +12,22 @@ use crate::{
 /// (the others are [`crate::templating::Block`]).
 #[derive(Debug, Clone)]
 pub enum BodyChild {
+  /// A horizontal group of columns.
   Section(Section),
+  /// A styled group of sections.
   Wrapper(Wrapper),
 }
 
 impl From<Section> for BodyChild {
-  fn from(s: Section) -> Self { Self::Section(s) }
+  fn from(s: Section) -> Self {
+    Self::Section(s)
+  }
 }
 
 impl From<Wrapper> for BodyChild {
-  fn from(w: Wrapper) -> Self { Self::Wrapper(w) }
+  fn from(w: Wrapper) -> Self {
+    Self::Wrapper(w)
+  }
 }
 
 impl Element for BodyChild {
@@ -54,7 +60,10 @@ pub struct Body {
 }
 
 impl Body {
-  pub fn new() -> Self { Self::default() }
+  /// Construct an empty element ready for typed children and styling.
+  pub fn new() -> Self {
+    Self::default()
+  }
 
   pub(crate) fn push_child(mut self, child: BodyChild) -> Self {
     self.children.push(child);
@@ -62,10 +71,14 @@ impl Body {
   }
 
   /// Direct sections and wrappers in rendering order.
-  pub fn children(&self) -> &[BodyChild] { &self.children }
+  pub fn children(&self) -> &[BodyChild] {
+    &self.children
+  }
 
   /// Configured body background color.
-  pub fn configured_background_color(&self) -> Option<&Color> { self.background_color.as_ref() }
+  pub fn configured_background_color(&self) -> Option<&Color> {
+    self.background_color.as_ref()
+  }
 
   /// Replace the children with a fresh `Vec` of sections. For mixed
   /// section/wrapper trees use
@@ -76,11 +89,13 @@ impl Body {
     self
   }
 
+  /// Set the checked background color.
   pub fn background_color(mut self, color: impl Into<Color>) -> Self {
     self.background_color = Some(color.into());
     self
   }
 
+  /// Set the width in the dimension accepted by this element.
   pub fn width(mut self, width: impl Into<Pixels>) -> Self {
     self.width = Some(width.into());
     self
@@ -90,8 +105,14 @@ impl Body {
 impl Element for Body {
   fn write_mjml(&self, w: &mut MjmlWriter) {
     w.open(crate::render::ElementName::builtin("mj-body"))
-      .attr(crate::render::AttributeName::builtin("background-color"), self.background_color.as_ref())
-      .attr(crate::render::AttributeName::builtin("width"), self.width.as_ref())
+      .attr(
+        crate::render::AttributeName::builtin("background-color"),
+        self.background_color.as_ref(),
+      )
+      .attr(
+        crate::render::AttributeName::builtin("width"),
+        self.width.as_ref(),
+      )
       .children(|w| {
         for child in &self.children {
           child.write_mjml(w);

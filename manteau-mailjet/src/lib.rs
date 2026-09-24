@@ -1,5 +1,7 @@
 //! Mailjet protocol implementation for Manteau's core sender.
 //! This crate performs no I/O. Supply a core Http implementation to Sender.
+#![deny(missing_docs)]
+
 use manteau_core::{
   Address, EmailAddress, HttpProvider, MessageId, PreparedMessage, Receipt,
   StatusPolicy,
@@ -16,6 +18,7 @@ pub struct Mailjet {
   config:      HttpConfig,
   credentials: Credentials,
 }
+
 impl Mailjet {
   /// Bind Mailjet credentials to its standard Send API endpoint.
   pub fn new(key: &str, secret: &str) -> Result<Self, HttpError> {
@@ -38,6 +41,7 @@ impl Mailjet {
     })
   }
 }
+
 /// Provider acceptance for all recipients, not proof of delivery.
 pub struct MailjetReceipt {
   ids:        Vec<MessageId>,
@@ -51,23 +55,27 @@ impl std::fmt::Debug for MailjetReceipt {
       .finish_non_exhaustive()
   }
 }
+
 impl MailjetReceipt {
   /// Recipients corresponding to `ids()`, ordered To, Cc, then Bcc.
   pub fn recipients(&self) -> &[EmailAddress] {
     &self.recipients
   }
 }
+
 impl Receipt for MailjetReceipt {
   fn ids(&self) -> &[MessageId] {
     &self.ids
   }
 }
+
 /// Provider request produced only through checked admission.
 #[derive(Serialize)]
 pub struct Payload<'a> {
   #[serde(rename = "Messages")]
   messages: [Mail<'a>; 1],
 }
+
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 struct Mail<'a> {
@@ -81,6 +89,7 @@ struct Mail<'a> {
   #[serde(rename = "TextPart")]
   text:    &'a str,
 }
+
 #[derive(Serialize)]
 struct Mailbox<'a> {
   #[serde(rename = "Email")]
@@ -88,6 +97,7 @@ struct Mailbox<'a> {
   #[serde(rename = "Name", skip_serializing_if = "Option::is_none")]
   name:  Option<&'a str>,
 }
+
 impl<'a> From<&'a Address> for Mailbox<'a> {
   fn from(address: &'a Address) -> Self {
     Self {
@@ -96,11 +106,13 @@ impl<'a> From<&'a Address> for Mailbox<'a> {
     }
   }
 }
+
 #[derive(Deserialize)]
 struct Response {
   #[serde(rename = "Messages")]
   messages: Vec<Outcome>,
 }
+
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct Outcome {
@@ -120,6 +132,7 @@ struct ApiError {
   #[serde(rename = "ErrorCode")]
   code: String,
 }
+
 #[derive(Deserialize)]
 struct Accepted {
   #[serde(rename = "Email")]
@@ -127,12 +140,14 @@ struct Accepted {
   #[serde(rename = "MessageID")]
   id:    ProviderId,
 }
+
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum ProviderId {
   Number(u64),
   Text(String),
 }
+
 impl ProviderId {
   fn into_id(self) -> Result<MessageId, MailjetError> {
     let id = match self {
@@ -142,6 +157,7 @@ impl ProviderId {
     MessageId::new(id).map_err(|_| MailjetErrorKind::Response.error())
   }
 }
+
 impl Response {
   fn into_receipt(
     self,

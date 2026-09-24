@@ -1,5 +1,7 @@
 //! Typed email values, rendering, and adapter contracts.
 //! Consumers normally import these types through `manteau`.
+#![deny(missing_docs)]
+
 pub mod idempotency;
 pub mod message;
 pub mod models;
@@ -10,7 +12,10 @@ pub mod transport;
 pub use idempotency::*;
 pub use message::*;
 pub use models::*;
-pub use render::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody, RenderError, RenderErrorKind, Rendered, RenderedBodyError, Renderer};
+pub use render::{
+  HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody,
+  RenderError, RenderErrorKind, Rendered, RenderedBodyError, Renderer,
+};
 pub use transport::*;
 
 pub mod http;

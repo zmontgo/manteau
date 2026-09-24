@@ -48,18 +48,22 @@ impl Template {
 
 impl Element for Template {
   fn write_mjml(&self, w: &mut MjmlWriter) {
-    w.open(crate::render::ElementName::builtin("mjml")).children(|w| {
-      if self.title.is_some() || self.preview_text.is_some() {
-        w.open(crate::render::ElementName::builtin("mj-head")).children(|w| {
-          if let Some(t) = &self.title {
-            w.open(crate::render::ElementName::builtin("mj-title")).text(t);
-          }
-          if let Some(p) = &self.preview_text {
-            w.open(crate::render::ElementName::builtin("mj-preview")).text(p);
-          }
-        });
-      }
-      self.body.write_mjml(w);
-    });
+    w.open(crate::render::ElementName::builtin("mjml"))
+      .children(|w| {
+        if self.title.is_some() || self.preview_text.is_some() {
+          w.open(crate::render::ElementName::builtin("mj-head"))
+            .children(|w| {
+              if let Some(t) = &self.title {
+                w.open(crate::render::ElementName::builtin("mj-title"))
+                  .text(t);
+              }
+              if let Some(p) = &self.preview_text {
+                w.open(crate::render::ElementName::builtin("mj-preview"))
+                  .text(p);
+              }
+            });
+        }
+        self.body.write_mjml(w);
+      });
   }
 }

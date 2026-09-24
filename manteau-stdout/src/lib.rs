@@ -1,6 +1,8 @@
 //! Explicit local inspection of private mail through standard output.
 //! This adapter prints recipients (including Bcc), subjects, and bodies. Use it
 //! only where stdout is an appropriate destination for that information.
+#![deny(missing_docs)]
+
 use std::io::Write;
 
 use async_trait::async_trait;
@@ -12,10 +14,13 @@ use manteau_core::{
 pub struct StdoutTransport {
   verbose: bool,
 }
+
 impl StdoutTransport {
   /// Print headers and a 280-character HTML preview (plaintext when HTML is
   /// absent).
-  pub fn new() -> Self { Self::default() }
+  pub fn new() -> Self {
+    Self::default()
+  }
 
   /// Print both complete body alternatives instead of a preview.
   pub fn verbose(mut self, verbose: bool) -> Self {
@@ -23,25 +28,38 @@ impl StdoutTransport {
     self
   }
 }
+
 /// Successful local output, not delivery evidence. Contains no provider IDs.
 #[derive(Debug)]
 pub struct StdoutReceipt;
 impl Receipt for StdoutReceipt {
-  fn ids(&self) -> &[MessageId] { &[] }
+  fn ids(&self) -> &[MessageId] {
+    &[]
+  }
 }
+
 /// Stdout failed, potentially after writing part of the message.
 #[derive(Debug, thiserror::Error)]
 #[error("could not write email to stdout")]
 pub struct StdoutError(#[source] std::io::Error);
 impl TransportFailure for StdoutError {
-  fn is_transient(&self) -> bool { false }
+  fn is_transient(&self) -> bool {
+    false
+  }
 
-  fn is_auth(&self) -> bool { false }
+  fn is_auth(&self) -> bool {
+    false
+  }
 
-  fn is_message_rejected(&self) -> bool { false }
+  fn is_message_rejected(&self) -> bool {
+    false
+  }
 
-  fn acceptance(&self) -> Acceptance { Acceptance::Unknown }
+  fn acceptance(&self) -> Acceptance {
+    Acceptance::Unknown
+  }
 }
+
 #[async_trait]
 impl Transport for StdoutTransport {
   type Error = StdoutError;

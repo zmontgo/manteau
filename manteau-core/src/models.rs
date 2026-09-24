@@ -32,11 +32,18 @@ pub struct EmailAddressError {
 }
 
 impl EmailAddressError {
-  pub fn input(&self) -> &str { &self.input }
+  /// Return the rejected input; it may contain private data and must not be
+  /// logged.
+  pub fn input(&self) -> &str {
+    &self.input
+  }
 }
 
 impl EmailAddress {
-  pub fn as_str(&self) -> &str { &self.0 }
+  /// Borrow the validated value as text.
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
 
   /// The local part — everything before `@`.
   ///
@@ -78,13 +85,17 @@ impl FromStr for EmailAddress {
 impl TryFrom<&str> for EmailAddress {
   type Error = EmailAddressError;
 
-  fn try_from(s: &str) -> Result<Self, Self::Error> { s.parse() }
+  fn try_from(s: &str) -> Result<Self, Self::Error> {
+    s.parse()
+  }
 }
 
 impl TryFrom<String> for EmailAddress {
   type Error = EmailAddressError;
 
-  fn try_from(s: String) -> Result<Self, Self::Error> { s.parse() }
+  fn try_from(s: String) -> Result<Self, Self::Error> {
+    s.parse()
+  }
 }
 
 impl std::fmt::Display for EmailAddress {
@@ -94,7 +105,9 @@ impl std::fmt::Display for EmailAddress {
 }
 
 impl AsRef<str> for EmailAddress {
-  fn as_ref(&self) -> &str { &self.0 }
+  fn as_ref(&self) -> &str {
+    &self.0
+  }
 }
 
 /// A validated single-line email header value. Empty values are permitted.
@@ -118,12 +131,17 @@ impl HeaderText {
   }
 
   /// Explicit access to potentially private header content.
-  pub fn as_str(&self) -> &str { &self.0 }
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
 }
+
 impl TryFrom<String> for HeaderText {
   type Error = InvalidHeader;
 
-  fn try_from(value: String) -> Result<Self, Self::Error> { Self::new(value) }
+  fn try_from(value: String) -> Result<Self, Self::Error> {
+    Self::new(value)
+  }
 }
 
 /// A mailbox with an optional validated display name.
@@ -133,9 +151,12 @@ pub struct Address {
   email: EmailAddress,
   name:  Option<HeaderText>,
 }
+
 impl Address {
   /// Construct an unnamed mailbox from an already validated address.
-  pub fn new(email: EmailAddress) -> Self { Self { email, name: None } }
+  pub fn new(email: EmailAddress) -> Self {
+    Self { email, name: None }
+  }
 
   /// Attach a single-line display name.
   pub fn name(mut self, name: HeaderText) -> Self {
@@ -144,7 +165,9 @@ impl Address {
   }
 
   /// The validated mailbox address.
-  pub fn email(&self) -> &EmailAddress { &self.email }
+  pub fn email(&self) -> &EmailAddress {
+    &self.email
+  }
 
   /// Optional display name; accessing it may expose personal information.
   pub fn display_name(&self) -> Option<&str> {
@@ -187,7 +210,10 @@ impl MessageId {
     Ok(Self(value))
   }
 
-  pub fn as_str(&self) -> &str { &self.0 }
+  /// Borrow the validated value as text.
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
 }
 
 impl std::fmt::Display for MessageId {
@@ -197,7 +223,9 @@ impl std::fmt::Display for MessageId {
 }
 
 impl AsRef<str> for MessageId {
-  fn as_ref(&self) -> &str { &self.0 }
+  fn as_ref(&self) -> &str {
+    &self.0
+  }
 }
 
 impl std::fmt::Debug for MessageId {
@@ -223,6 +251,7 @@ impl std::fmt::Debug for HeaderText {
     f.write_str("HeaderText([redacted])")
   }
 }
+
 #[cfg(test)]
 mod tests {
   use super::*;

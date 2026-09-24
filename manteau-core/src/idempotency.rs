@@ -29,6 +29,7 @@ impl TryFrom<String> for IdempotencyKey {
     Ok(Self(value))
   }
 }
+
 impl IdempotencyKey {
   /// The exact value sent to the provider.
   pub fn as_str(&self) -> &str {
@@ -86,6 +87,7 @@ pub struct Submission {
   scope:   String,
   started: std::time::SystemTime,
 }
+
 /// A replay would exceed the guarantee of the bound provider.
 #[derive(Debug, thiserror::Error)]
 pub enum ReplayError {
@@ -97,6 +99,7 @@ pub enum ReplayError {
   #[error("submission is outside its safe replay window")]
   Expired,
 }
+
 impl Submission {
   /// Bind a fresh identity and immutable message to a configured provider.
   /// The retention budget starts now, conservatively before the first request.
@@ -139,6 +142,7 @@ impl Submission {
     }
   }
 }
+
 impl std::fmt::Debug for Submission {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str("Submission([redacted])")

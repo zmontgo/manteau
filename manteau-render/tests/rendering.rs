@@ -1,6 +1,4 @@
-use manteau_core::{
-  templating::{Body, Column, Push, Section, Template, Text},
-};
+use manteau_core::templating::{Body, Column, Push, Section, Template, Text};
 use manteau_render::MrmlRenderer;
 
 #[test]
@@ -22,5 +20,4 @@ fn typed_content_is_escaped_before_mjml_rendering() {
 fn plaintext_width_is_checked() {
   assert!(MrmlRenderer::new().text_width(2).is_err());
   assert!(MrmlRenderer::new().text_width(3).is_ok());
-
 }

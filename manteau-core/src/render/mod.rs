@@ -9,5 +9,8 @@ pub mod writer;
 pub use error::{RenderError, RenderErrorKind};
 pub use name::{AttributeName, ElementName, InvalidMarkupName};
 pub use pipeline::{Rendered, RenderedBodyError};
-pub use port::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody, Renderer};
+pub use port::{
+  HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody,
+  Renderer,
+};
 pub use writer::{ElementWriter, MjmlWriter};

@@ -14,8 +14,11 @@ use crate::{
 /// [`Column`]: crate::templating::column::Column
 #[derive(Debug, Clone)]
 pub enum Block {
+  /// Styled textual content.
   Text(Text),
+  /// A link styled as a button.
   Button(Button),
+  /// A network image with an HTTP(S) source.
   Image(Image),
   /// A consumer-defined element. Held by [`Arc`] so [`Block`] (and the
   /// containers built on it) can be `Clone` without pulling in a
@@ -38,7 +41,8 @@ impl Block {
   ///
   /// impl Element for MyDivider {
   ///   fn write_mjml(&self, w: &mut MjmlWriter) {
-  ///     w.open(ElementName::custom("mj-divider").unwrap()).close_self();
+  ///     w.open(ElementName::custom("mj-divider").unwrap())
+  ///       .close_self();
   ///   }
   /// }
   ///
@@ -64,15 +68,21 @@ impl Element for Block {
 /// and `vec![Text::new(..).into(), ..]` both flow into containers without
 /// the caller spelling the variant.
 impl From<Text> for Block {
-  fn from(t: Text) -> Self { Self::Text(t) }
+  fn from(t: Text) -> Self {
+    Self::Text(t)
+  }
 }
 
 /// Wraps a [`Button`] into [`Block::Button`].
 impl From<Button> for Block {
-  fn from(b: Button) -> Self { Self::Button(b) }
+  fn from(b: Button) -> Self {
+    Self::Button(b)
+  }
 }
 
 /// Wraps an [`Image`] into [`Block::Image`].
 impl From<Image> for Block {
-  fn from(i: Image) -> Self { Self::Image(i) }
+  fn from(i: Image) -> Self {
+    Self::Image(i)
+  }
 }

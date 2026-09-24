@@ -1,23 +1,38 @@
 /// Most types of measurements.
 #[derive(Debug, Clone, Copy)]
 pub enum Measurement {
+  /// A nonnegative pixel dimension.
   Pixels(Pixels),
+  /// A percentage from 0 through 100.
   Percentage(Percentage),
+  /// A finite, nonnegative font-relative `em` dimension.
   Em(Em),
+  /// A finite, nonnegative root-relative `rem` dimension.
   Rem(Rem),
 }
 
 impl From<Pixels> for Measurement {
-  fn from(p: Pixels) -> Self { Self::Pixels(p) }
+  fn from(p: Pixels) -> Self {
+    Self::Pixels(p)
+  }
 }
+
 impl From<Percentage> for Measurement {
-  fn from(p: Percentage) -> Self { Self::Percentage(p) }
+  fn from(p: Percentage) -> Self {
+    Self::Percentage(p)
+  }
 }
+
 impl From<Em> for Measurement {
-  fn from(e: Em) -> Self { Self::Em(e) }
+  fn from(e: Em) -> Self {
+    Self::Em(e)
+  }
 }
+
 impl From<Rem> for Measurement {
-  fn from(r: Rem) -> Self { Self::Rem(r) }
+  fn from(r: Rem) -> Self {
+    Self::Rem(r)
+  }
 }
 
 impl std::fmt::Display for Measurement {
@@ -41,13 +56,20 @@ impl Pixels {
   /// # use manteau_core::templating::attributes::measurements::Pixels;
   /// assert_eq!(Pixels::new(14).to_string(), "14px");
   /// ```
-  pub fn new(value: u32) -> Self { Self(value) }
+  pub fn new(value: u32) -> Self {
+    Self(value)
+  }
 
-  pub fn value(self) -> u32 { self.0 }
+  /// Return the numeric value supplied at construction.
+  pub fn value(self) -> u32 {
+    self.0
+  }
 }
 
 impl From<u32> for Pixels {
-  fn from(value: u32) -> Self { Self::new(value) }
+  fn from(value: u32) -> Self {
+    Self::new(value)
+  }
 }
 
 impl std::fmt::Display for Pixels {
@@ -78,7 +100,10 @@ impl Em {
     Ok(Self(value))
   }
 
-  pub fn value(self) -> f32 { self.0 }
+  /// Return the numeric value supplied at construction.
+  pub fn value(self) -> f32 {
+    self.0
+  }
 }
 
 impl std::fmt::Display for Em {
@@ -104,7 +129,10 @@ impl Rem {
     Ok(Self(value))
   }
 
-  pub fn value(self) -> f32 { self.0 }
+  /// Return the numeric value supplied at construction.
+  pub fn value(self) -> f32 {
+    self.0
+  }
 }
 
 impl std::fmt::Display for Rem {
@@ -121,12 +149,16 @@ pub struct Percentage(u8);
 
 #[derive(Debug, thiserror::Error)]
 #[error("percentage must be 0..=100: got {value}")]
+/// A dimension outside the allowed 0–100% range.
 pub struct PercentageError {
   value: u32,
 }
 
 impl PercentageError {
-  pub fn value(&self) -> u32 { self.value }
+  /// Return the numeric value supplied at construction.
+  pub fn value(&self) -> u32 {
+    self.value
+  }
 }
 
 impl Percentage {
@@ -147,7 +179,10 @@ impl Percentage {
     }
   }
 
-  pub fn value(self) -> u8 { self.0 }
+  /// Return the numeric value supplied at construction.
+  pub fn value(self) -> u8 {
+    self.0
+  }
 }
 
 impl std::fmt::Display for Percentage {
@@ -159,7 +194,9 @@ impl std::fmt::Display for Percentage {
 /// Line height options. The preferred way (according to MDN) is unitless.
 #[derive(Debug, Clone, Copy)]
 pub enum LineHeight {
+  /// A positive ratio independent of the font size.
   Unitless(PositiveFinite),
+  /// An explicit CSS dimension for line height.
   Measurement(Measurement),
 }
 
@@ -177,7 +214,9 @@ impl PositiveFinite {
   }
 
   /// Exact ratio supplied at construction.
-  pub fn value(self) -> f32 { self.0 }
+  pub fn value(self) -> f32 {
+    self.0
+  }
 }
 
 impl std::fmt::Display for PositiveFinite {

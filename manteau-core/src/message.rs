@@ -11,6 +11,7 @@ pub struct Recipients {
   cc:  Vec<Address>,
   bcc: Vec<Address>,
 }
+
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RecipientLists {
@@ -18,6 +19,7 @@ struct RecipientLists {
   cc:  Vec<Address>,
   bcc: Vec<Address>,
 }
+
 /// An envelope must contain at least one recipient across To, Cc, and Bcc.
 #[derive(Debug, thiserror::Error)]
 #[error("at least one recipient is required")]
@@ -36,6 +38,7 @@ impl TryFrom<RecipientLists> for Recipients {
     })
   }
 }
+
 impl Recipients {
   /// Start with a visible primary recipient.
   pub fn to(address: Address) -> Self {
@@ -111,6 +114,7 @@ pub struct Envelope {
   recipients: Recipients,
   subject:    HeaderText,
 }
+
 impl Envelope {
   /// Bind a sender, nonempty recipient collection, and safe single-line
   /// subject.
@@ -154,6 +158,7 @@ struct PreparedContent {
   envelope: Envelope,
   body:     Rendered,
 }
+
 impl PreparedMessage {
   /// Freeze an envelope and validated rendered bodies without rendering again.
   pub fn new(envelope: Envelope, body: Rendered) -> Self {
@@ -171,6 +176,7 @@ impl PreparedMessage {
     &self.0.body
   }
 }
+
 impl std::fmt::Debug for PreparedMessage {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str("PreparedMessage([redacted])")

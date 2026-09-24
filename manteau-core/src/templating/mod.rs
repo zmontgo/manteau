@@ -5,16 +5,23 @@
 //! defines the data only.
 
 pub mod attributes;
+/// Column content: text, buttons, and images.
 pub mod block;
+/// The top-level email body and its section or wrapper children.
 pub mod body;
 pub mod button;
+/// A section column that holds visible content blocks.
 pub mod column;
 pub mod element;
 pub mod image;
 pub mod push;
+/// A horizontal group of columns.
 pub mod section;
+/// A reusable MJML template and optional presentation metadata.
 pub mod template;
+/// Styled textual email content.
 pub mod text;
+/// A group of sections with shared visual styling.
 pub mod wrapper;
 
 pub use block::Block;

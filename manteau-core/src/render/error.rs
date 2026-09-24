@@ -51,7 +51,6 @@ impl RenderError {
       source: Box::new(source),
     }
   }
-
 }
 
 impl std::fmt::Debug for RenderError {

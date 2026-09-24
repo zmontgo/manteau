@@ -1,5 +1,7 @@
 //! Cloudflare protocol implementation for Manteau's core sender.
 //! This crate performs no I/O. Supply a core Http implementation to Sender.
+#![deny(missing_docs)]
+
 use manteau_core::{
   Address, EmailAddress, HttpProvider, MessageId, PreparedMessage, Receipt,
   StatusPolicy,
@@ -18,6 +20,7 @@ pub struct Cloudflare {
   config:      HttpConfig,
   credentials: Credentials,
 }
+
 impl Cloudflare {
   /// Bind a token to a Cloudflare account. Path delimiters are not valid IDs.
   pub fn new(account: &str, token: &str) -> Result<Self, HttpError> {
@@ -42,6 +45,7 @@ impl Cloudflare {
     })
   }
 }
+
 /// Complete recipient report from Cloudflare. Success of the HTTP operation
 /// does not imply success for every recipient. IDs are genuine provider
 /// identifiers.
@@ -63,6 +67,7 @@ impl std::fmt::Debug for CloudflareReceipt {
       .finish_non_exhaustive()
   }
 }
+
 impl CloudflareReceipt {
   /// Recipients the provider reports as immediately delivered.
   pub fn delivered(&self) -> &[EmailAddress] {
@@ -84,11 +89,13 @@ impl CloudflareReceipt {
     &self.suppressed
   }
 }
+
 impl Receipt for CloudflareReceipt {
   fn ids(&self) -> &[MessageId] {
     &self.ids
   }
 }
+
 /// Provider request produced only through checked admission.
 #[derive(Serialize)]
 pub struct Payload<'a> {
@@ -100,6 +107,7 @@ pub struct Payload<'a> {
   html:    &'a str,
   text:    &'a str,
 }
+
 #[derive(Serialize)]
 struct Mailbox<'a> {
   address: &'a str,
@@ -115,6 +123,7 @@ impl<'a> From<&'a Address> for Mailbox<'a> {
     }
   }
 }
+
 #[derive(Deserialize)]
 struct Response {
   success: bool,
@@ -122,10 +131,12 @@ struct Response {
   #[serde(default)]
   errors:  Vec<ApiError>,
 }
+
 #[derive(Deserialize)]
 struct ApiError {
   code: i64,
 }
+
 #[derive(Deserialize)]
 struct Outcomes {
   message_id:            String,
@@ -135,6 +146,7 @@ struct Outcomes {
   #[serde(default)]
   suppressed_recipients: Vec<EmailAddress>,
 }
+
 impl Response {
   fn into_receipt(
     self,
@@ -175,7 +187,10 @@ impl Response {
     }
     let mut ids = Vec::new();
     if !result.message_id.is_empty() {
-      ids.push(MessageId::new(result.message_id).map_err(|_| CloudflareErrorKind::Response.error())?);
+      ids.push(
+        MessageId::new(result.message_id)
+          .map_err(|_| CloudflareErrorKind::Response.error())?,
+      );
     } else if !result.delivered.is_empty() || !result.queued.is_empty() {
       return Err(CloudflareErrorKind::Response.error());
     }

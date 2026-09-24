@@ -18,47 +18,67 @@ pub struct PaddingOptions {
 
 impl PaddingOptions {
   /// New empty padding — every side unset. Equivalent to `Default::default()`.
-  pub fn new() -> Self { Self::default() }
+  pub fn new() -> Self {
+    Self::default()
+  }
 
+  /// Apply the same padding to the left and right sides.
   pub fn x(mut self, padding: Measurement) -> Self {
     self.left = Some(padding);
     self.right = Some(padding);
     self
   }
 
+  /// Apply the same padding to the top and bottom sides.
   pub fn y(mut self, padding: Measurement) -> Self {
     self.top = Some(padding);
     self.bottom = Some(padding);
     self
   }
 
+  /// Set top padding.
   pub fn t(mut self, padding: Measurement) -> Self {
     self.top = Some(padding);
     self
   }
 
+  /// Set left padding.
   pub fn l(mut self, padding: Measurement) -> Self {
     self.left = Some(padding);
     self
   }
 
+  /// Set right padding.
   pub fn r(mut self, padding: Measurement) -> Self {
     self.right = Some(padding);
     self
   }
 
+  /// Set bottom padding.
   pub fn b(mut self, padding: Measurement) -> Self {
     self.bottom = Some(padding);
     self
   }
 
-  pub fn top(&self) -> Option<&Measurement> { self.top.as_ref() }
+  /// Inspect top padding, if configured.
+  pub fn top(&self) -> Option<&Measurement> {
+    self.top.as_ref()
+  }
 
-  pub fn bottom(&self) -> Option<&Measurement> { self.bottom.as_ref() }
+  /// Inspect bottom padding, if configured.
+  pub fn bottom(&self) -> Option<&Measurement> {
+    self.bottom.as_ref()
+  }
 
-  pub fn left(&self) -> Option<&Measurement> { self.left.as_ref() }
+  /// Inspect left padding, if configured.
+  pub fn left(&self) -> Option<&Measurement> {
+    self.left.as_ref()
+  }
 
-  pub fn right(&self) -> Option<&Measurement> { self.right.as_ref() }
+  /// Inspect right padding, if configured.
+  pub fn right(&self) -> Option<&Measurement> {
+    self.right.as_ref()
+  }
 
   /// `true` when no side has been set. Elements use this to decide whether
   /// to emit any padding attribute at all.

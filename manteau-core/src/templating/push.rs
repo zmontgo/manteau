@@ -30,33 +30,44 @@ use crate::templating::{
 /// Append a single child to `Self`, consuming and returning the modified
 /// container. Implementors decide what child types they accept.
 pub trait Push<Child> {
+  /// Append a child that the parent type permits and return the parent.
   fn push(self, child: Child) -> Self;
 }
 
 // ─── Body accepts Section, Wrapper, BodyChild ────────────────────────────
 
 impl Push<Section> for Body {
-  fn push(self, child: Section) -> Self { self.push_child(BodyChild::Section(child)) }
+  fn push(self, child: Section) -> Self {
+    self.push_child(BodyChild::Section(child))
+  }
 }
 
 impl Push<Wrapper> for Body {
-  fn push(self, child: Wrapper) -> Self { self.push_child(BodyChild::Wrapper(child)) }
+  fn push(self, child: Wrapper) -> Self {
+    self.push_child(BodyChild::Wrapper(child))
+  }
 }
 
 impl Push<BodyChild> for Body {
-  fn push(self, child: BodyChild) -> Self { self.push_child(child) }
+  fn push(self, child: BodyChild) -> Self {
+    self.push_child(child)
+  }
 }
 
 // ─── Wrapper accepts Section ─────────────────────────────────────────────
 
 impl Push<Section> for Wrapper {
-  fn push(self, child: Section) -> Self { self.push_section(child) }
+  fn push(self, child: Section) -> Self {
+    self.push_section(child)
+  }
 }
 
 // ─── Section accepts Column ──────────────────────────────────────────────
 
 impl Push<Column> for Section {
-  fn push(self, child: Column) -> Self { self.push_column(child) }
+  fn push(self, child: Column) -> Self {
+    self.push_column(child)
+  }
 }
 
 // ─── Column accepts anything Into<Block> ─────────────────────────────────
@@ -67,5 +78,7 @@ impl Push<Column> for Section {
 // wrapping themselves into a `Block::Custom` and pushing that.
 
 impl<T: Into<Block>> Push<T> for Column {
-  fn push(self, child: T) -> Self { self.push_block(child.into()) }
+  fn push(self, child: T) -> Self {
+    self.push_block(child.into())
+  }
 }

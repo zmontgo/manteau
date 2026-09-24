@@ -3,6 +3,7 @@
 //! through `manteau::mjml` directly. The shape here mirrors that
 //! re-export, so anything published from this crate eventually surfaces
 //! under `manteau::*`.
+#![deny(missing_docs)]
 
 use proc_macro::TokenStream;
 use proc_macro_crate::{FoundCrate, crate_name};

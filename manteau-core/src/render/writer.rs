@@ -7,6 +7,7 @@
 //! powers the askama template ecosystem.
 
 use std::fmt::Write as _;
+
 use super::{AttributeName, ElementName};
 
 /// Accumulating buffer that produces an MJML document.
@@ -16,8 +17,12 @@ pub struct MjmlWriter {
 }
 
 impl MjmlWriter {
-  pub fn new() -> Self { Self { buf: String::new() } }
+  /// Start an empty MJML output buffer.
+  pub fn new() -> Self {
+    Self { buf: String::new() }
+  }
 
+  /// Reserve output space when the approximate MJML size is known.
   pub fn with_capacity(capacity: usize) -> Self {
     Self {
       buf: String::with_capacity(capacity),
@@ -32,16 +37,20 @@ impl MjmlWriter {
     self.buf.push_str(tag.as_str());
     ElementWriter {
       writer: self,
-      tag: tag.as_str(),
+      tag:    tag.as_str(),
       closed: false,
     }
   }
 
   /// Consume the writer and return the accumulated MJML string.
-  pub fn into_string(self) -> String { self.buf }
+  pub fn into_string(self) -> String {
+    self.buf
+  }
 
   /// Borrow the current buffer for inspection.
-  pub fn as_str(&self) -> &str { &self.buf }
+  pub fn as_str(&self) -> &str {
+    &self.buf
+  }
 }
 
 /// Per-element builder. Methods are consuming so that "attr after close" is
@@ -136,7 +145,8 @@ mod tests {
   #[test]
   fn open_and_text() {
     let mut w = MjmlWriter::new();
-    w.open(crate::render::ElementName::builtin("mj-text")).text("hello");
+    w.open(crate::render::ElementName::builtin("mj-text"))
+      .text("hello");
     assert_eq!(w.into_string(), "<mj-text>hello</mj-text>");
   }
 
@@ -146,8 +156,14 @@ mod tests {
     let color = Some("red".to_string());
     let absent: Option<String> = None;
     w.open(crate::render::ElementName::builtin("mj-text"))
-      .attr(crate::render::AttributeName::builtin("color"), color.as_ref())
-      .attr(crate::render::AttributeName::builtin("font-size"), absent.as_ref())
+      .attr(
+        crate::render::AttributeName::builtin("color"),
+        color.as_ref(),
+      )
+      .attr(
+        crate::render::AttributeName::builtin("font-size"),
+        absent.as_ref(),
+      )
       .text("hi");
     assert_eq!(w.into_string(), r#"<mj-text color="red">hi</mj-text>"#);
   }
@@ -155,7 +171,8 @@ mod tests {
   #[test]
   fn text_content_escaped() {
     let mut w = MjmlWriter::new();
-    w.open(crate::render::ElementName::builtin("mj-text")).text("a < b & c > d");
+    w.open(crate::render::ElementName::builtin("mj-text"))
+      .text("a < b & c > d");
     assert_eq!(
       w.into_string(),
       "<mj-text>a &lt; b &amp; c &gt; d</mj-text>"
@@ -166,16 +183,20 @@ mod tests {
   fn attr_value_escaped() {
     let mut w = MjmlWriter::new();
     let v = Some(r#"a"b<c"#.to_string());
-    w.open(crate::render::ElementName::builtin("mj-image")).attr(crate::render::AttributeName::builtin("src"), v.as_ref()).close_self();
+    w.open(crate::render::ElementName::builtin("mj-image"))
+      .attr(crate::render::AttributeName::builtin("src"), v.as_ref())
+      .close_self();
     assert_eq!(w.into_string(), r#"<mj-image src="a&quot;b&lt;c"/>"#);
   }
 
   #[test]
   fn children_callback() {
     let mut w = MjmlWriter::new();
-    w.open(crate::render::ElementName::builtin("mj-section")).children(|w| {
-      w.open(crate::render::ElementName::builtin("mj-column")).text("x");
-    });
+    w.open(crate::render::ElementName::builtin("mj-section"))
+      .children(|w| {
+        w.open(crate::render::ElementName::builtin("mj-column"))
+          .text("x");
+      });
     assert_eq!(
       w.into_string(),
       "<mj-section><mj-column>x</mj-column></mj-section>"
@@ -186,7 +207,9 @@ mod tests {
   fn self_closing() {
     let mut w = MjmlWriter::new();
     let src = Some("https://example.com/img.png".to_string());
-    w.open(crate::render::ElementName::builtin("mj-image")).attr(crate::render::AttributeName::builtin("src"), src.as_ref()).close_self();
+    w.open(crate::render::ElementName::builtin("mj-image"))
+      .attr(crate::render::AttributeName::builtin("src"), src.as_ref())
+      .close_self();
     assert_eq!(
       w.into_string(),
       r#"<mj-image src="https://example.com/img.png"/>"#

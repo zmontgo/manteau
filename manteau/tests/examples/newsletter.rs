@@ -1,14 +1,6 @@
-//! Newsletter — demonstrates `mjml!`'s control-flow syntax.
+//! A local newsletter capture demonstrating `mjml!` control flow.
 //!
-//! Shows `@for` over a list, `@if`/`@else` for conditional sections, and
-//! `@match` for variant dispatch. Renders through `MockTransport` (no
-//! features needed) and prints the resulting MJML.
-//!
-//! Run with:
-//!
-//! ```text
-//! cargo run --example newsletter
-//! ```
+//! The test checks capture count without printing private rendered mail.
 
 use manteau::{Message, Transport, prelude::*};
 use manteau_mock::MockTransport;
@@ -31,18 +23,18 @@ enum Category {
 async fn newsletter() -> Result<(), Box<dyn std::error::Error>> {
   let articles = vec![
     Article {
-      title:    "Visa updates for European travel",
-      excerpt:  "Schengen requirements are changing in late 2026 …",
+      title:    "New product features",
+      excerpt:  "A roundup of this month’s improvements.",
       category: Category::Feature,
     },
     Article {
-      title:    "New travel-policy module available",
-      excerpt:  "Admins can now configure pre-trip approvals per group.",
+      title:    "New account settings available",
+      excerpt:  "Manage your notification preferences.",
       category: Category::Update,
     },
     Article {
-      title:    "Tip: travel insurance disclosures",
-      excerpt:  "Use the schema editor to require coverage details up front.",
+      title:    "Tip: managing notifications",
+      excerpt:  "Choose only the updates you want to receive.",
       category: Category::Tip,
     },
   ];
@@ -129,7 +121,7 @@ async fn newsletter() -> Result<(), Box<dyn std::error::Error>> {
     Envelope::new(
       Address::new("newsletter@example.com".parse()?),
       Recipients::to(Address::new("you@example.com".parse()?)),
-      HeaderText::new("Your monthly travel newsletter")?,
+      HeaderText::new("Your monthly newsletter")?,
     ),
     template,
   )
@@ -138,12 +130,7 @@ async fn newsletter() -> Result<(), Box<dyn std::error::Error>> {
   // MockTransport is always available — no feature flag needed.
   let transport = MockTransport::new();
   transport.send(&msg).await?;
-  let sent = transport.sent();
-  println!("Captured {} message(s).", sent.len());
-  let rendered = sent[0].body();
-  println!("\n─── rendered HTML ────────────────────────────────────────");
-  let preview: String = rendered.html().chars().take(800).collect();
-  println!("{}…", preview);
+  assert_eq!(transport.sent().len(), 1);
 
   Ok(())
 }

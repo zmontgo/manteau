@@ -11,6 +11,7 @@ pub enum MailjetErrorKind {
   /// The provider explicitly rejected this message.
   Rejected,
 }
+
 /// Sanitized provider failure; source details require explicit diagnostic
 /// access.
 #[derive(thiserror::Error)]
@@ -21,6 +22,7 @@ pub struct MailjetError {
   #[source]
   source:                   Option<HttpError>,
 }
+
 impl MailjetError {
   /// Provider-specific failure source.
   pub fn kind(&self) -> MailjetErrorKind {
@@ -40,6 +42,7 @@ impl MailjetError {
     }
   }
 }
+
 impl MailjetErrorKind {
   pub(crate) fn error(self) -> MailjetError {
     MailjetError {
@@ -49,11 +52,13 @@ impl MailjetErrorKind {
     }
   }
 }
+
 impl std::fmt::Debug for MailjetError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     std::fmt::Display::fmt(self, f)
   }
 }
+
 impl TransportFailure for MailjetError {
   fn is_transient(&self) -> bool {
     false

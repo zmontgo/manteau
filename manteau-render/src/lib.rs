@@ -1,8 +1,12 @@
 //! MJML and plaintext rendering for Manteau's core rendering port.
 //! The parser uses its no-op include loader, so rendering does not fetch
 //! remote content or resolve local files.
+#![deny(missing_docs)]
 
-use manteau_core::render::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody, Renderer};
+use manteau_core::render::{
+  HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody,
+  Renderer,
+};
 
 /// Configured MJML renderer. The default plaintext line width is 80 columns.
 #[derive(Debug, Clone, Copy)]
@@ -75,8 +79,8 @@ impl Renderer for MrmlRenderer {
 
   fn html(&self, mjml: &MjmlDocument) -> Result<HtmlBody, Self::Error> {
     let options = mrml::prelude::parser::ParserOptions::default();
-    let parsed =
-      mrml::parse_with_options(mjml.as_str(), &options).map_err(MrmlError::Parse)?;
+    let parsed = mrml::parse_with_options(mjml.as_str(), &options)
+      .map_err(MrmlError::Parse)?;
     let html = parsed
       .element
       .render(&Default::default())

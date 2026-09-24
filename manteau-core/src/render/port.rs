@@ -45,7 +45,10 @@ impl HtmlBody {
     if html.is_empty() {
       return Err(InvalidHtmlBody::Empty);
     }
-    if html.chars().any(|ch| ch.is_control() && !matches!(ch, '\t' | '\n' | '\r')) {
+    if html
+      .chars()
+      .any(|ch| ch.is_control() && !matches!(ch, '\t' | '\n' | '\r'))
+    {
       return Err(InvalidHtmlBody::Control);
     }
 
@@ -82,7 +85,10 @@ impl PlaintextBody {
   /// Check plaintext from a renderer or an author-supplied alternative.
   pub fn new(text: impl Into<String>) -> Result<Self, InvalidPlaintextBody> {
     let text = text.into();
-    if text.chars().any(|ch| ch.is_control() && !matches!(ch, '\t' | '\n' | '\r')) {
+    if text
+      .chars()
+      .any(|ch| ch.is_control() && !matches!(ch, '\t' | '\n' | '\r'))
+    {
       return Err(InvalidPlaintextBody);
     }
 

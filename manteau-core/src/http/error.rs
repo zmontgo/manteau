@@ -23,6 +23,7 @@ pub enum HttpError {
   #[error("invalid provider response")]
   Decode(#[source] serde_json::Error),
 }
+
 impl std::fmt::Debug for HttpError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     std::fmt::Display::fmt(self, f)

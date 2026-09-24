@@ -43,7 +43,9 @@ pub trait TransportFailure: std::error::Error + Send + Sync + 'static {
   fn acceptance(&self) -> Acceptance;
   /// Provider-requested delay. This is a lower bound, not evidence of retry
   /// safety.
-  fn retry_after(&self) -> Option<Duration> { None }
+  fn retry_after(&self) -> Option<Duration> {
+    None
+  }
 }
 
 /// A configured delivery mechanism consuming already prepared mail.
@@ -66,11 +68,19 @@ pub trait Transport: Send + Sync {
 }
 
 impl TransportFailure for std::convert::Infallible {
-  fn is_transient(&self) -> bool { match *self {} }
+  fn is_transient(&self) -> bool {
+    match *self {}
+  }
 
-  fn is_auth(&self) -> bool { match *self {} }
+  fn is_auth(&self) -> bool {
+    match *self {}
+  }
 
-  fn is_message_rejected(&self) -> bool { match *self {} }
+  fn is_message_rejected(&self) -> bool {
+    match *self {}
+  }
 
-  fn acceptance(&self) -> Acceptance { match *self {} }
+  fn acceptance(&self) -> Acceptance {
+    match *self {}
+  }
 }

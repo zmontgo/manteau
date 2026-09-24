@@ -7,12 +7,17 @@ pub struct Color(String);
 
 #[derive(Debug, thiserror::Error)]
 #[error("invalid color: {input}")]
+/// A rejected CSS color literal.
 pub struct ColorError {
   input: String,
 }
 
 impl ColorError {
-  pub fn input(&self) -> &str { &self.input }
+  /// Return the rejected input; it may contain private data and must not be
+  /// logged.
+  pub fn input(&self) -> &str {
+    &self.input
+  }
 }
 
 impl Color {
@@ -24,7 +29,9 @@ impl Color {
   /// ```
   pub fn hex(rgb: u32) -> Result<Self, ColorError> {
     if rgb > 0x00ff_ffff {
-      return Err(ColorError { input: format!("0x{rgb:x}") });
+      return Err(ColorError {
+        input: format!("0x{rgb:x}"),
+      });
     }
     Ok(Self(format!("#{rgb:06x}")))
   }
@@ -49,9 +56,14 @@ impl Color {
   }
 
   /// Accept a CSS named color only when the CSS color parser recognizes it.
-  pub fn named(name: &str) -> Result<Self, ColorError> { Self::try_parse(name) }
+  pub fn named(name: &str) -> Result<Self, ColorError> {
+    Self::try_parse(name)
+  }
 
-  pub fn as_str(&self) -> &str { &self.0 }
+  /// Borrow the validated value as text.
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
 
   fn is_valid_hex(s: &str) -> bool {
     let Some(rest) = s.strip_prefix('#') else {
@@ -71,7 +83,9 @@ impl Color {
 impl FromStr for Color {
   type Err = ColorError;
 
-  fn from_str(s: &str) -> Result<Self, Self::Err> { Self::try_parse(s) }
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    Self::try_parse(s)
+  }
 }
 
 impl std::fmt::Display for Color {
@@ -81,5 +95,7 @@ impl std::fmt::Display for Color {
 }
 
 impl AsRef<str> for Color {
-  fn as_ref(&self) -> &str { &self.0 }
+  fn as_ref(&self) -> &str {
+    &self.0
+  }
 }

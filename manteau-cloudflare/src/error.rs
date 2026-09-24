@@ -11,6 +11,7 @@ pub enum CloudflareErrorKind {
   /// The provider explicitly rejected this message.
   Rejected,
 }
+
 /// Sanitized provider failure; source details require explicit diagnostic
 /// access.
 #[derive(thiserror::Error)]
@@ -21,6 +22,7 @@ pub struct CloudflareError {
   #[source]
   source:                   Option<HttpError>,
 }
+
 impl CloudflareError {
   /// Provider-specific failure source.
   pub fn kind(&self) -> CloudflareErrorKind {
@@ -40,6 +42,7 @@ impl CloudflareError {
     }
   }
 }
+
 impl CloudflareErrorKind {
   pub(crate) fn error(self) -> CloudflareError {
     CloudflareError {
@@ -49,11 +52,13 @@ impl CloudflareErrorKind {
     }
   }
 }
+
 impl std::fmt::Debug for CloudflareError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     std::fmt::Display::fmt(self, f)
   }
 }
+
 impl TransportFailure for CloudflareError {
   fn is_transient(&self) -> bool {
     false

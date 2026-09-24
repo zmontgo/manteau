@@ -1,5 +1,7 @@
 //! Typed email templates and independently selectable transports.
 //! See the crate README for installation and the complete sending example.
+#![deny(missing_docs)]
+
 extern crate self as manteau;
 mod mailer;
 pub mod message;
@@ -16,6 +18,7 @@ pub mod prelude {
 
   pub use crate::{Mailer, Message, mjml};
 }
+
 #[cfg(feature = "cloudflare")]
 pub use manteau_cloudflare::{
   Cloudflare, CloudflareError, CloudflareErrorKind, CloudflareReceipt,

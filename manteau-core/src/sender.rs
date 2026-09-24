@@ -272,11 +272,18 @@ pub struct StatusPolicy {
 
 impl StatusPolicy {
   /// Declare disjoint statuses requiring provider interpretation and statuses
-  /// that prove rejection. Invalid policy literals fail during const evaluation.
-  pub const fn new(handled: &'static [u16], not_accepted: &'static [u16]) -> Self {
+  /// that prove rejection. Invalid policy literals fail during const
+  /// evaluation.
+  pub const fn new(
+    handled: &'static [u16],
+    not_accepted: &'static [u16],
+  ) -> Self {
     let mut i = 0;
     while i < handled.len() {
-      assert!(handled[i] >= 100 && handled[i] <= 599, "invalid handled HTTP status");
+      assert!(
+        handled[i] >= 100 && handled[i] <= 599,
+        "invalid handled HTTP status"
+      );
       let mut j = 0;
       while j < not_accepted.len() {
         assert!(handled[i] != not_accepted[j], "overlapping status policy");
@@ -287,11 +294,17 @@ impl StatusPolicy {
 
     let mut i = 0;
     while i < not_accepted.len() {
-      assert!(not_accepted[i] >= 100 && not_accepted[i] <= 599, "invalid rejection HTTP status");
+      assert!(
+        not_accepted[i] >= 100 && not_accepted[i] <= 599,
+        "invalid rejection HTTP status"
+      );
       i += 1;
     }
 
-    Self { handled, not_accepted }
+    Self {
+      handled,
+      not_accepted,
+    }
   }
 
   /// Whether this status requires provider-specific body interpretation.

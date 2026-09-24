@@ -1,14 +1,7 @@
-//! Welcome email — quickstart for the `mjml!` macro.
+//! Welcome email with checked links and macro-built MJML.
 //!
-//! Builds a multi-section welcome message with a styled card containing a
-//! one-time password and a CTA button, then renders the rendered HTML
-//! preview via the stdout transport.
-//!
-//! Run with:
-//!
-//! ```text
-//! cargo run --example welcome --features stdout
-//! ```
+//! This test captures the prepared message locally; it never contacts a
+//! provider.
 
 use manteau::{Message, Transport, prelude::*};
 use manteau_mock::MockTransport;
@@ -109,7 +102,7 @@ async fn welcome() -> Result<(), Box<dyn std::error::Error>> {
 
   let transport = MockTransport::new();
   let receipt = transport.send(&msg).await?;
-  println!("\nSent. Message IDs: {:?}", receipt.ids());
+  assert!(receipt.ids().is_empty());
 
   Ok(())
 }

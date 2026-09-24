@@ -1,21 +1,6 @@
-//! Builder API — same content as the `welcome` example, expressed via the
-//! typed builder DSL without the `mjml!` macro.
+//! The welcome email built with owner methods rather than `mjml!`.
 //!
-//! Useful when:
-//!   - you prefer a code-shape that builds the tree imperatively,
-//!   - you need to assemble a template from values that are inconvenient to
-//!     splice through `{expr}` (long generic chains, async-awaited intermediate
-//!     values, etc.),
-//!   - or you want to know what the macro is roughly expanding to.
-//!
-//! The macro and the builder produce the same `Template`; pick whichever
-//! reads better for the situation.
-//!
-//! Run with:
-//!
-//! ```text
-//! cargo run --example builder
-//! ```
+//! This is useful when composing trees from ordinary Rust values.
 
 use manteau::{Message, Transport, prelude::*};
 use manteau_mock::MockTransport;
@@ -83,9 +68,12 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
               .padding_left(Pixels::new(20))
               .push(
                 Text::new(temp_password)
-                  .font_family(FontFamily::new(
-                    "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  ).unwrap())
+                  .font_family(
+                    FontFamily::new(
+                      "ui-monospace, SFMono-Regular, Menlo, monospace",
+                    )
+                    .unwrap(),
+                  )
                   .font_weight(FontWeight::Bold)
                   .font_size(Pixels::new(14)),
               ),
@@ -120,7 +108,7 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
 
   let transport = MockTransport::new();
   transport.send(&msg).await?;
-  println!("Built template via the typed builder. Captured 1 message.");
+  assert_eq!(transport.sent().len(), 1);
 
   Ok(())
 }

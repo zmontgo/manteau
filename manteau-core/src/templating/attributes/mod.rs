@@ -1,14 +1,20 @@
 //! Strongly-typed attribute primitives for MJML element fields.
 
+/// Checked CSS color values for MJML attributes.
 pub mod colors;
+/// Font families, weights, and text transforms.
 pub mod fonts;
+/// Checked CSS dimensions and line heights.
 pub mod measurements;
+/// Checked email destinations and image sources.
 pub mod urls;
 // Spacings contains options for Padding and Margin, as opposed to
 // `measurements`, which contains the actual units of length that might be
 // applied to a spacing.
+/// Per-side padding configuration.
 pub mod spacings;
 
+/// Common attribute imports for template builders.
 pub mod prelude {
   pub use crate::templating::attributes::{
     colors::*, fonts::*, measurements::*, spacings::*, urls::*,

@@ -1,7 +1,8 @@
 //! The admitted, serialized HTTP request.
 
-use super::{Credentials, HttpConfig, HttpError, HttpResponse, JsonBody};
 use std::time::Duration;
+
+use super::{Credentials, HttpConfig, HttpError, HttpResponse, JsonBody};
 use crate::IdempotencyKey;
 
 /// A serialized request admitted by the core sender. The HTTP adapter supplies
@@ -83,7 +84,10 @@ impl<'a> HttpRequest<'a> {
     retry_after: Option<Duration>,
     body: Vec<u8>,
   ) -> Result<HttpResponse, HttpError> {
-    ResponseGuard { config: self.config }.response(status, retry_after, body)
+    ResponseGuard {
+      config: self.config,
+    }
+    .response(status, retry_after, body)
   }
 
   /// Transfer the admitted request to an HTTP implementation without copying
@@ -97,7 +101,15 @@ impl<'a> HttpRequest<'a> {
     JsonBody,
     ResponseGuard<'a>,
   ) {
-    (self.config, self.credentials, self.key, self.body, ResponseGuard { config: self.config })
+    (
+      self.config,
+      self.credentials,
+      self.key,
+      self.body,
+      ResponseGuard {
+        config: self.config,
+      },
+    )
   }
 }
 
@@ -111,10 +123,20 @@ mod tests {
       .unwrap()
       .response_limit(std::num::NonZeroUsize::new(4).unwrap());
     let credentials = Credentials::bearer("private-token").unwrap();
-    let request = HttpRequest::new(&config, &credentials, None, &serde_json::json!({})).unwrap();
-    assert!(matches!(request.response(200, None, vec![0; 5]), Err(HttpError::ResponseLimit)));
+    let request =
+      HttpRequest::new(&config, &credentials, None, &serde_json::json!({}))
+        .unwrap();
+    assert!(matches!(
+      request.response(200, None, vec![0; 5]),
+      Err(HttpError::ResponseLimit)
+    ));
 
-    let request = HttpRequest::new(&config, &credentials, None, &serde_json::json!({})).unwrap();
-    assert!(matches!(request.response(700, None, vec![]), Err(HttpError::InvalidResponseStatus)));
+    let request =
+      HttpRequest::new(&config, &credentials, None, &serde_json::json!({}))
+        .unwrap();
+    assert!(matches!(
+      request.response(700, None, vec![]),
+      Err(HttpError::InvalidResponseStatus)
+    ));
   }
 }

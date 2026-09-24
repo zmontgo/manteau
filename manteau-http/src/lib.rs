@@ -1,6 +1,7 @@
 //! Reqwest implementation of Manteau's HTTP port. Protocol decisions and send
 //! orchestration live in core; this driver owns connection pooling and I/O
 //! bounds.
+#![deny(missing_docs)]
 
 use std::time::{Duration, SystemTime};
 

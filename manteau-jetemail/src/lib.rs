@@ -1,5 +1,7 @@
 //! JetEmail protocol and idempotency capabilities. This adapter performs no
 //! I/O.
+#![deny(missing_docs)]
+
 use std::time::Duration;
 
 use manteau_core::{
@@ -14,6 +16,7 @@ pub struct JetEmail {
   config:      HttpConfig,
   credentials: Credentials,
 }
+
 impl JetEmail {
   /// Use the standard transactional send endpoint.
   pub fn new(token: &str) -> Result<Self, HttpError> {
@@ -31,6 +34,7 @@ impl JetEmail {
     })
   }
 }
+
 impl HttpProvider for JetEmail {
   type Error = JetEmailError;
   type Payload<'a> = Payload<'a>;
@@ -88,24 +92,29 @@ impl HttpProvider for JetEmail {
       return Err(JetEmailErrorKind::Response.error());
     }
     Ok(JetEmailReceipt {
-      ids: [MessageId::new(accepted.id).map_err(|_| JetEmailErrorKind::Response.error())?],
+      ids: [MessageId::new(accepted.id)
+        .map_err(|_| JetEmailErrorKind::Response.error())?],
     })
   }
 }
+
 impl IdempotentProvider for JetEmail {
   fn retention(&self) -> Duration {
     Duration::from_secs(24 * 60 * 60)
   }
 }
+
 #[derive(serde::Deserialize)]
 struct Accepted {
   id: String,
 }
+
 #[derive(serde::Deserialize)]
 struct Conflict {
   code:  Option<String>,
   error: Option<String>,
 }
+
 /// Acceptance into JetEmail's queue, not proof of delivery.
 pub struct JetEmailReceipt {
   ids: [MessageId; 1],
@@ -116,11 +125,13 @@ impl std::fmt::Debug for JetEmailReceipt {
     f.write_str("JetEmailReceipt([redacted])")
   }
 }
+
 impl Receipt for JetEmailReceipt {
   fn ids(&self) -> &[MessageId] {
     &self.ids
   }
 }
+
 /// JetEmail-specific input and response failures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -134,6 +145,7 @@ pub enum JetEmailErrorKind {
   /// Acceptance evidence is malformed or unknown.
   Response,
 }
+
 /// Sanitized protocol failure retaining the original decoder error when
 /// relevant.
 #[derive(thiserror::Error)]
@@ -144,6 +156,7 @@ pub struct JetEmailError {
   #[source]
   source:      Option<HttpError>,
 }
+
 impl JetEmailError {
   /// Provider-specific failure source.
   pub fn kind(&self) -> JetEmailErrorKind {
@@ -158,6 +171,7 @@ impl JetEmailError {
     }
   }
 }
+
 impl JetEmailErrorKind {
   fn error(self) -> JetEmailError {
     JetEmailError {
@@ -167,11 +181,13 @@ impl JetEmailErrorKind {
     }
   }
 }
+
 impl std::fmt::Debug for JetEmailError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     std::fmt::Display::fmt(self, f)
   }
 }
+
 impl TransportFailure for JetEmailError {
   fn is_transient(&self) -> bool {
     self.kind == JetEmailErrorKind::InFlight
@@ -200,6 +216,7 @@ impl TransportFailure for JetEmailError {
     self.retry_after
   }
 }
+
 /// Provider payload available only through checked admission.
 #[derive(serde::Serialize)]
 pub struct Payload<'a> {
@@ -211,6 +228,7 @@ pub struct Payload<'a> {
   html:    &'a str,
   text:    &'a str,
 }
+
 impl<'a> From<&'a PreparedMessage> for Payload<'a> {
   fn from(message: &'a PreparedMessage) -> Self {
     let envelope = message.envelope();

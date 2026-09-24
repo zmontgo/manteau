@@ -1,7 +1,10 @@
 //! Shared preparation of MJML and validated rendered bodies.
 
 use crate::{
-  render::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, MjmlWriter, PlaintextBody, RenderError, Renderer},
+  render::{
+    HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, MjmlWriter,
+    PlaintextBody, RenderError, Renderer,
+  },
   templating::{Element, Template},
 };
 
@@ -47,7 +50,10 @@ impl TryFrom<Bodies> for Rendered {
 
 impl Rendered {
   pub(crate) fn from_renderer(html: HtmlBody, text: PlaintextBody) -> Self {
-    Self { html: html.into_string(), text: text.into_string() }
+    Self {
+      html: html.into_string(),
+      text: text.into_string(),
+    }
   }
 
   /// Accept externally rendered content. HTML is trusted markup, not sanitized.
@@ -65,7 +71,9 @@ impl Rendered {
     let html = if html.is_empty() {
       html
     } else {
-      HtmlBody::new(html).map_err(RenderedBodyError::Html)?.into_string()
+      HtmlBody::new(html)
+        .map_err(RenderedBodyError::Html)?
+        .into_string()
     };
     let text = PlaintextBody::new(text)
       .map_err(RenderedBodyError::Plaintext)?

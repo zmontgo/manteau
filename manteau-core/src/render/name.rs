@@ -14,12 +14,20 @@ pub struct AttributeName(&'static str);
 pub struct InvalidMarkupName;
 
 impl ElementName {
-  pub(crate) const fn builtin(name: &'static str) -> Self { Self(name) }
+  pub(crate) const fn builtin(name: &'static str) -> Self {
+    Self(name)
+  }
 
   /// Admit a custom `mj-*` tag using lowercase ASCII letters, digits, and
   /// hyphens. This checks syntax; it does not register renderer support.
   pub fn custom(name: &'static str) -> Result<Self, InvalidMarkupName> {
-    if !name.starts_with("mj-") || name.len() <= 3 || name.len() > 64 || !name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
+    if !name.starts_with("mj-")
+      || name.len() <= 3
+      || name.len() > 64
+      || !name
+        .bytes()
+        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+    {
       return Err(InvalidMarkupName);
     }
 
@@ -27,18 +35,24 @@ impl ElementName {
   }
 
   /// The admitted tag name.
-  pub fn as_str(self) -> &'static str { self.0 }
+  pub fn as_str(self) -> &'static str {
+    self.0
+  }
 }
 
 impl AttributeName {
-  pub(crate) const fn builtin(name: &'static str) -> Self { Self(name) }
+  pub(crate) const fn builtin(name: &'static str) -> Self {
+    Self(name)
+  }
 
   /// Admit a custom attribute name using lowercase ASCII letters, digits,
   /// and hyphens. The first character must be a letter.
   pub fn custom(name: &'static str) -> Result<Self, InvalidMarkupName> {
     if name.len() > 64
       || !name.as_bytes().first().is_some_and(u8::is_ascii_lowercase)
-      || !name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+      || !name
+        .bytes()
+        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
     {
       return Err(InvalidMarkupName);
     }
@@ -47,7 +61,9 @@ impl AttributeName {
   }
 
   /// The admitted attribute name.
-  pub fn as_str(self) -> &'static str { self.0 }
+  pub fn as_str(self) -> &'static str {
+    self.0
+  }
 }
 
 #[cfg(test)]

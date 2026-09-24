@@ -8,16 +8,27 @@ impl FontFamily {
   pub fn new(stack: &str) -> Result<Self, FontFamilyError> {
     if stack.split(',').any(|name| {
       let name = name.trim();
-      name.is_empty() || !name.chars().all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, ' ' | '-' | '_'))
+      name.is_empty()
+        || !name
+          .chars()
+          .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, ' ' | '-' | '_'))
     }) {
       return Err(FontFamilyError);
     }
 
-    Ok(Self(stack.split(',').map(str::trim).collect::<Vec<_>>().join(", ")))
+    Ok(Self(
+      stack
+        .split(',')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(", "),
+    ))
   }
 
   /// Canonical font stack after validation.
-  pub fn as_str(&self) -> &str { &self.0 }
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
 }
 
 /// The font stack contains unsupported CSS or an empty family name.
@@ -32,7 +43,9 @@ impl std::fmt::Display for FontFamily {
 }
 
 impl AsRef<str> for FontFamily {
-  fn as_ref(&self) -> &str { &self.0 }
+  fn as_ref(&self) -> &str {
+    &self.0
+  }
 }
 
 /// Font weight, 100-900. Renders as the numeric value (`"700"`) rather than
@@ -86,9 +99,13 @@ impl std::fmt::Display for FontWeight {
 /// CSS `text-transform` — controls case of rendered text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TextTransform {
+  /// Leave text case unchanged.
   None,
+  /// Render text in uppercase.
   Uppercase,
+  /// Render text in lowercase.
   Lowercase,
+  /// Capitalize words in rendered text.
   Capitalize,
 }
 

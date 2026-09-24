@@ -201,7 +201,7 @@ and submission, without inventing a query-engine-shaped layer.
     core's checked color/URL/font contracts and emits typed enum literals;
     duplicate attributes fail at the duplicate name.
 
-- [ ] 10. **Published-library documentation and examples**.
+- [x] 10. **Published-library documentation and examples** — `tzrssksu`.
   - Add `#![deny(missing_docs)]` to every library crate and document each
     public crate, module, type, variant, field, method, and extension point to
     a useful depth. Treat the lint as a release gate, not a local exception.
@@ -222,6 +222,9 @@ and submission, without inventing a query-engine-shaped layer.
     one-line control flow and expressions. Keep tightly related short definitions
     together only where that improves comprehension. Run rustfmt after edits;
     formatting alone does not provide the requested visual grouping.
+  - Verified workspace all-feature rustdoc, tested examples, and all-feature
+    workspace tests including local provider protocol servers. The tested
+    JetEmail protocol case is linked as the durable replay example.
 
 - [ ] 11. **Release verification and measured optimization**.
   - Root manifests/Cargo.lock: consistent 0.2 versions, workspace dependency
