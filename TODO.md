@@ -178,7 +178,7 @@ and submission, without inventing a query-engine-shaped layer.
     candidate for links, while Manteau currently needs its narrower email-link
     and image-source policies.
 
-- [ ] 8. **Test helper ownership** — next change.
+- [x] 8. **Test helper ownership** — current change.
   - Replace bare fixture/helper functions in `manteau/tests/`, core tests,
     and provider protocol tests with meaningful owner methods or local test
     bodies. Keep `#[test]` and `#[tokio::test]` entry points as the explicit
@@ -187,7 +187,7 @@ and submission, without inventing a query-engine-shaped layer.
   - Confirm all non-procedural-macro production source has no bare functions
     and no binary `main` entry points.
 
-- [ ] 9. **Existing macro hygiene and contract parity**.
+- [ ] 9. **Existing macro hygiene and contract parity** — next change.
   - `manteau-macros/src/`: resolve renamed consumer dependencies, preserve spans,
     and generate calls to the authoritative checked types. Fix existing literal
     validation drift and ensure no expansion-time accepted input can panic during

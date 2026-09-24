@@ -1,6 +1,6 @@
 use manteau_core::{
-  Acceptance, Address, Envelope, HeaderText, PreparedMessage, Receipt, Recipients, Rendered,
-  Sender, Transport, TransportFailure, http::HttpConfig,
+  Acceptance, Address, Envelope, HeaderText, PreparedMessage, Receipt,
+  Recipients, Rendered, Sender, Transport, TransportFailure, http::HttpConfig,
 };
 use manteau_http::HttpClient;
 use manteau_mailjet::{Mailjet, MailjetErrorKind};
@@ -9,32 +9,37 @@ use wiremock::{
   matchers::{body_partial_json, header, method, path},
 };
 
-fn message() -> manteau_core::PreparedMessage {
-  PreparedMessage::new(
-    Envelope::new(
-      Address::new("from@example.com".parse().unwrap()),
-      Recipients::to(Address::new("to@example.com".parse().unwrap())),
-      HeaderText::new("Hello").unwrap(),
-    ),
-    Rendered::new("<p>Hi!</p>", "Hi!").unwrap(),
-  )
-}
+struct Fixture<'a>(&'a MockServer);
 
-fn sender(server: &MockServer) -> Sender<Mailjet, HttpClient> {
-  Sender::new(
-    Mailjet::with_config(
-      "test-key",
-      "test-secret",
-      HttpConfig::new(&format!("{}/v3.1/send", server.uri())).unwrap(),
+impl Fixture<'_> {
+  fn message(&self) -> manteau_core::PreparedMessage {
+    PreparedMessage::new(
+      Envelope::new(
+        Address::new("from@example.com".parse().unwrap()),
+        Recipients::to(Address::new("to@example.com".parse().unwrap())),
+        HeaderText::new("Hello").unwrap(),
+      ),
+      Rendered::new("<p>Hi!</p>", "Hi!").unwrap(),
     )
-    .unwrap(),
-    HttpClient::new().unwrap(),
-  )
+  }
+
+  fn sender(&self) -> Sender<Mailjet, HttpClient> {
+    Sender::new(
+      Mailjet::with_config(
+        "test-key",
+        "test-secret",
+        HttpConfig::new(&format!("{}/v3.1/send", self.0.uri())).unwrap(),
+      )
+      .unwrap(),
+      HttpClient::new().unwrap(),
+    )
+  }
 }
 
 #[tokio::test]
 async fn wire_request_and_real_recipient_id() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .and(path("/v3.1/send"))
     .and(header("content-type", "application/json"))
@@ -43,7 +48,7 @@ async fn wire_request_and_real_recipient_id() {
       "Messages":[{"Status":"success","To":[{"Email":"to@example.com","MessageID":18014398509481984u64}]}]
     })))
     .expect(1).mount(&server).await;
-  let receipt = sender(&server).send(&message()).await.unwrap();
+  let receipt = fixture.sender().send(&fixture.message()).await.unwrap();
   assert_eq!(receipt.ids()[0].as_str(), "18014398509481984");
   assert_eq!(receipt.recipients()[0].as_str(), "to@example.com");
   assert!(!format!("{receipt:?}").contains("to@example.com"));
@@ -52,10 +57,11 @@ async fn wire_request_and_real_recipient_id() {
 #[tokio::test]
 async fn malformed_success_remains_uncertain() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST")).respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
     "Messages":[{"Status":"success","To":[{"Email":"someone-else@example.com","MessageID":"id"}]}]
   }))).expect(1).mount(&server).await;
-  let error = sender(&server).send(&message()).await.unwrap_err();
+  let error = fixture.sender().send(&fixture.message()).await.unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::Unknown);
   assert!(
     matches!(error, manteau_core::SendError::Provider(ref source) if source.kind() == MailjetErrorKind::Response)
@@ -65,6 +71,7 @@ async fn malformed_success_remains_uncertain() {
 #[tokio::test]
 async fn provider_validation_error_preserves_machine_code() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "Messages":[{"Status":"error","Errors":[{"ErrorCode":"mj-0004","ErrorMessage":"private details"}]}]
@@ -73,7 +80,7 @@ async fn provider_validation_error_preserves_machine_code() {
     .mount(&server)
     .await;
 
-  let error = sender(&server).send(&message()).await.unwrap_err();
+  let error = fixture.sender().send(&fixture.message()).await.unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::NotAccepted);
   assert!(!error.to_string().contains("private details"));
   assert!(
@@ -85,6 +92,7 @@ async fn provider_validation_error_preserves_machine_code() {
 #[tokio::test]
 async fn cc_and_bcc_keep_recipient_id_association() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "Messages":[{
@@ -108,7 +116,7 @@ async fn cc_and_bcc_keep_recipient_id_association() {
     ),
     manteau_core::Rendered::new("<p>Hello</p>", "Hello").unwrap(),
   );
-  let receipt = sender(&server).send(&prepared).await.unwrap();
+  let receipt = fixture.sender().send(&prepared).await.unwrap();
   assert_eq!(
     receipt
       .ids()
@@ -136,12 +144,13 @@ async fn status_classification_keeps_acceptance_separate() {
     (503, Acceptance::Unknown, true),
   ] {
     let server = MockServer::start().await;
+    let fixture = Fixture(&server);
     Mock::given(method("POST"))
       .respond_with(ResponseTemplate::new(status))
       .expect(1)
       .mount(&server)
       .await;
-    let error = sender(&server).send(&message()).await.unwrap_err();
+    let error = fixture.sender().send(&fixture.message()).await.unwrap_err();
     assert_eq!(error.acceptance(), acceptance);
     assert_eq!(error.is_transient(), transient);
     assert_eq!(error.is_auth(), status == 401);

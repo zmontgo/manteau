@@ -126,52 +126,69 @@ impl IdempotentProvider for AdmissionProtocol {
   }
 }
 
-fn message() -> PreparedMessage {
-  PreparedMessage::new(
-    Envelope::new(
-      Address::new("from@example.com".parse().unwrap()),
-      Recipients::to(Address::new("to@example.com".parse().unwrap())),
-      HeaderText::new("A subject").unwrap(),
-    ),
-    Rendered::new("<p>Body</p>", "Body").unwrap(),
-  )
-}
+impl AdmissionProtocol {
+  fn message() -> PreparedMessage {
+    PreparedMessage::new(
+      Envelope::new(
+        Address::new("from@example.com".parse().unwrap()),
+        Recipients::to(Address::new("to@example.com".parse().unwrap())),
+        HeaderText::new("A subject").unwrap(),
+      ),
+      Rendered::new("<p>Body</p>", "Body").unwrap(),
+    )
+  }
 
-fn sender(
-  calls: Arc<AtomicUsize>,
-  status: u16,
-  admit: bool,
-  token: &str,
-  protocol_scope: &'static str,
-) -> Sender<AdmissionProtocol, CountingHttp> {
-  Sender::new(
-    AdmissionProtocol {
-      config: HttpConfig::new("https://example.com/send").unwrap(),
-      credentials: Credentials::bearer(token).unwrap(),
-      admit,
-      protocol_scope,
-    },
-    CountingHttp { calls, status },
-  )
+  fn sender(
+    calls: Arc<AtomicUsize>,
+    status: u16,
+    admit: bool,
+    token: &str,
+    protocol_scope: &'static str,
+  ) -> Sender<AdmissionProtocol, CountingHttp> {
+    Sender::new(
+      AdmissionProtocol {
+        config: HttpConfig::new("https://example.com/send").unwrap(),
+        credentials: Credentials::bearer(token).unwrap(),
+        admit,
+        protocol_scope,
+      },
+      CountingHttp { calls, status },
+    )
+  }
 }
 
 #[tokio::test]
 async fn admission_precedes_physical_dispatch() {
   let calls = Arc::new(AtomicUsize::new(0));
-  let blocked = sender(calls.clone(), 201, false, "token", "test-protocol/1");
-  let error = blocked.send(&message()).await.unwrap_err();
+  let blocked = AdmissionProtocol::sender(
+    calls.clone(),
+    201,
+    false,
+    "token",
+    "test-protocol/1",
+  );
+  let error = blocked
+    .send(&AdmissionProtocol::message())
+    .await
+    .unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::NotAccepted);
   assert_eq!(calls.load(Ordering::SeqCst), 0);
 
-  let allowed = sender(calls.clone(), 201, true, "token", "test-protocol/1");
-  allowed.send(&message()).await.unwrap();
+  let allowed = AdmissionProtocol::sender(
+    calls.clone(),
+    201,
+    true,
+    "token",
+    "test-protocol/1",
+  );
+  allowed.send(&AdmissionProtocol::message()).await.unwrap();
   assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
 
 #[tokio::test]
 async fn status_evidence_and_replay_scope_prevent_blind_dispatch() {
   let calls = Arc::new(AtomicUsize::new(0));
-  let original = sender(
+  let original = AdmissionProtocol::sender(
     calls.clone(),
     503,
     true,
@@ -180,14 +197,14 @@ async fn status_evidence_and_replay_scope_prevent_blind_dispatch() {
   );
   let submission = Submission::new(
     IdempotencyKey::try_from("key".to_owned()).unwrap(),
-    message(),
+    AdmissionProtocol::message(),
     &original,
   );
   let error = original.send_idempotent(&submission).await.unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::Unknown);
   assert_eq!(calls.load(Ordering::SeqCst), 1);
 
-  let changed = sender(
+  let changed = AdmissionProtocol::sender(
     calls.clone(),
     201,
     true,
@@ -198,7 +215,7 @@ async fn status_evidence_and_replay_scope_prevent_blind_dispatch() {
   assert!(matches!(error, SendError::Replay(_)));
   assert_eq!(calls.load(Ordering::SeqCst), 1);
 
-  let upgraded = sender(
+  let upgraded = AdmissionProtocol::sender(
     calls.clone(),
     201,
     true,
@@ -213,10 +230,16 @@ async fn status_evidence_and_replay_scope_prevent_blind_dispatch() {
 #[tokio::test]
 async fn expired_persisted_submission_never_dispatches() {
   let calls = Arc::new(AtomicUsize::new(0));
-  let mail = sender(calls.clone(), 201, true, "token", "test-protocol/1");
+  let mail = AdmissionProtocol::sender(
+    calls.clone(),
+    201,
+    true,
+    "token",
+    "test-protocol/1",
+  );
   let submission = Submission::new(
     IdempotencyKey::try_from("key".to_owned()).unwrap(),
-    message(),
+    AdmissionProtocol::message(),
     &mail,
   );
   let mut persisted = serde_json::to_value(&submission).unwrap();

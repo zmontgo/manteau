@@ -1,7 +1,7 @@
 use manteau_cloudflare::{Cloudflare, CloudflareErrorKind};
 use manteau_core::{
-  Acceptance, Address, Envelope, HeaderText, PreparedMessage, Receipt, Recipients, Rendered,
-  Sender, Transport, TransportFailure, http::HttpConfig,
+  Acceptance, Address, Envelope, HeaderText, PreparedMessage, Receipt,
+  Recipients, Rendered, Sender, Transport, TransportFailure, http::HttpConfig,
 };
 use manteau_http::HttpClient;
 use wiremock::{
@@ -10,45 +10,56 @@ use wiremock::{
 };
 
 const PATH: &str = "/client/v4/accounts/test-account/email/sending/send";
-fn message(subject: &str, extra: bool) -> manteau_core::PreparedMessage {
-  let recipients =
-    Recipients::to(Address::new("to@example.com".parse().unwrap()));
-  let recipients = if extra {
-    recipients.push_cc(Address::new("cc@example.com".parse().unwrap()))
-  } else {
-    recipients
-  };
-  PreparedMessage::new(
-    Envelope::new(
-      Address::new("from@example.com".parse().unwrap()),
-      recipients,
-      HeaderText::new(subject).unwrap(),
-    ),
-    Rendered::new("<p>Hi!</p>", "Hi!").unwrap(),
-  )
-}
-fn sender(server: &MockServer) -> Sender<Cloudflare, HttpClient> {
-  Sender::new(
-    Cloudflare::with_config(
-      "test-token",
-      HttpConfig::new(&format!("{}{}", server.uri(), PATH)).unwrap(),
+struct Fixture<'a>(&'a MockServer);
+
+impl Fixture<'_> {
+  fn message(
+    &self,
+    subject: &str,
+    extra: bool,
+  ) -> manteau_core::PreparedMessage {
+    let recipients =
+      Recipients::to(Address::new("to@example.com".parse().unwrap()));
+    let recipients = if extra {
+      recipients.push_cc(Address::new("cc@example.com".parse().unwrap()))
+    } else {
+      recipients
+    };
+    PreparedMessage::new(
+      Envelope::new(
+        Address::new("from@example.com".parse().unwrap()),
+        recipients,
+        HeaderText::new(subject).unwrap(),
+      ),
+      Rendered::new("<p>Hi!</p>", "Hi!").unwrap(),
     )
-    .unwrap(),
-    HttpClient::new().unwrap(),
-  )
+  }
+
+  fn sender(&self) -> Sender<Cloudflare, HttpClient> {
+    Sender::new(
+      Cloudflare::with_config(
+        "test-token",
+        HttpConfig::new(&format!("{}{}", self.0.uri(), PATH)).unwrap(),
+      )
+      .unwrap(),
+      HttpClient::new().unwrap(),
+    )
+  }
 }
 
 #[tokio::test]
 async fn wire_request_and_real_outcome() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST")).and(path(PATH))
     .and(header("authorization", "Bearer test-token"))
     .and(body_partial_json(serde_json::json!({"from":{"address":"from@example.com"},"to":[{"address":"to@example.com"}],"subject":"Hello"})))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "success":true,"result":{"message_id":"provider-1","delivered":["to@example.com"],"queued":[],"permanent_bounces":[],"suppressed_recipients":[]}
     }))).expect(1).mount(&server).await;
-  let receipt = sender(&server)
-    .send(&message("Hello", false))
+  let receipt = fixture
+    .sender()
+    .send(&fixture.message("Hello", false))
     .await
     .unwrap();
   assert_eq!(receipt.ids()[0].as_str(), "provider-1");
@@ -59,6 +70,7 @@ async fn wire_request_and_real_outcome() {
 #[tokio::test]
 async fn named_recipients_keep_their_display_names() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .and(body_partial_json(serde_json::json!({
       "to":[{"address":"to@example.com","name":"Recipient"}]
@@ -80,12 +92,13 @@ async fn named_recipients_keep_their_display_names() {
     ),
     manteau_core::Rendered::new("<p>Hello</p>", "Hello").unwrap(),
   );
-  sender(&server).send(&prepared).await.unwrap();
+  fixture.sender().send(&prepared).await.unwrap();
 }
 
 #[tokio::test]
 async fn duplicate_recipients_are_rejected_before_dispatch() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   let prepared = manteau_core::PreparedMessage::new(
     Envelope::new(
       Address::new("from@example.com".parse().unwrap()),
@@ -95,7 +108,7 @@ async fn duplicate_recipients_are_rejected_before_dispatch() {
     ),
     manteau_core::Rendered::new("<p>Hello</p>", "Hello").unwrap(),
   );
-  let error = sender(&server).send(&prepared).await.unwrap_err();
+  let error = fixture.sender().send(&prepared).await.unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::NotAccepted);
   assert!(server.received_requests().await.unwrap().is_empty());
 }
@@ -103,13 +116,15 @@ async fn duplicate_recipients_are_rejected_before_dispatch() {
 #[tokio::test]
 async fn unicode_subject_and_mixed_outcomes() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST")).and(path(PATH))
     .and(body_partial_json(serde_json::json!({"subject":"=?UTF-8?Q?Welcome_=E2=80=94_test?="})))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "success":true,"result":{"message_id":"provider-2","delivered":["to@example.com"],"queued":[],"permanent_bounces":["cc@example.com"]}
     }))).expect(1).mount(&server).await;
-  let receipt = sender(&server)
-    .send(&message("Welcome — test", true))
+  let receipt = fixture
+    .sender()
+    .send(&fixture.message("Welcome — test", true))
     .await
     .unwrap();
   assert_eq!(receipt.delivered().len(), 1);
@@ -119,6 +134,7 @@ async fn unicode_subject_and_mixed_outcomes() {
 #[tokio::test]
 async fn suppression_is_reported_alongside_accepted_recipients() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "success":true,
@@ -134,7 +150,11 @@ async fn suppression_is_reported_alongside_accepted_recipients() {
     .mount(&server)
     .await;
 
-  let receipt = sender(&server).send(&message("Hello", true)).await.unwrap();
+  let receipt = fixture
+    .sender()
+    .send(&fixture.message("Hello", true))
+    .await
+    .unwrap();
   assert_eq!(receipt.ids()[0].as_str(), "provider-3");
   assert_eq!(receipt.queued()[0].as_str(), "to@example.com");
   assert_eq!(receipt.suppressed()[0].as_str(), "cc@example.com");
@@ -143,11 +163,13 @@ async fn suppression_is_reported_alongside_accepted_recipients() {
 #[tokio::test]
 async fn contradictory_success_is_uncertain() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST")).respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
     "success":true,"result":{"message_id":"id","delivered":["someone@example.com"],"queued":[],"permanent_bounces":[]}
   }))).expect(1).mount(&server).await;
-  let error = sender(&server)
-    .send(&message("Hello", false))
+  let error = fixture
+    .sender()
+    .send(&fixture.message("Hello", false))
     .await
     .unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::Unknown);
@@ -159,6 +181,7 @@ async fn contradictory_success_is_uncertain() {
 #[tokio::test]
 async fn error_flag_with_result_is_uncertain() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "success":false,"errors":[{"code":10202}],
@@ -167,8 +190,9 @@ async fn error_flag_with_result_is_uncertain() {
     .expect(1)
     .mount(&server)
     .await;
-  let error = sender(&server)
-    .send(&message("Hello", false))
+  let error = fixture
+    .sender()
+    .send(&fixture.message("Hello", false))
     .await
     .unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::Unknown);
@@ -177,6 +201,7 @@ async fn error_flag_with_result_is_uncertain() {
 #[tokio::test]
 async fn application_rejection_and_status_evidence() {
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "success":false,"errors":[{"code":10202}],"result":null
@@ -184,8 +209,9 @@ async fn application_rejection_and_status_evidence() {
     .expect(1)
     .mount(&server)
     .await;
-  let error = sender(&server)
-    .send(&message("Hello", false))
+  let error = fixture
+    .sender()
+    .send(&fixture.message("Hello", false))
     .await
     .unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::NotAccepted);
@@ -194,13 +220,15 @@ async fn application_rejection_and_status_evidence() {
   );
 
   let server = MockServer::start().await;
+  let fixture = Fixture(&server);
   Mock::given(method("POST"))
     .respond_with(ResponseTemplate::new(503))
     .expect(1)
     .mount(&server)
     .await;
-  let error = sender(&server)
-    .send(&message("Hello", false))
+  let error = fixture
+    .sender()
+    .send(&fixture.message("Hello", false))
     .await
     .unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::Unknown);

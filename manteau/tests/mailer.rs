@@ -1,4 +1,7 @@
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+  Arc,
+  atomic::{AtomicUsize, Ordering},
+};
 
 use async_trait::async_trait;
 use manteau::{
@@ -40,40 +43,64 @@ impl Receipt for RejectedReceipt {
 struct Rejected;
 
 impl TransportFailure for Rejected {
-  fn is_transient(&self) -> bool { false }
-  fn is_auth(&self) -> bool { false }
-  fn is_message_rejected(&self) -> bool { true }
-  fn acceptance(&self) -> Acceptance { Acceptance::NotAccepted }
+  fn is_transient(&self) -> bool {
+    false
+  }
+
+  fn is_auth(&self) -> bool {
+    false
+  }
+
+  fn is_message_rejected(&self) -> bool {
+    true
+  }
+
+  fn acceptance(&self) -> Acceptance {
+    Acceptance::NotAccepted
+  }
 }
 
 #[async_trait]
 impl Transport for RejectedTransport {
-  type Receipt = RejectedReceipt;
   type Error = Rejected;
+  type Receipt = RejectedReceipt;
 
-  async fn send(&self, _: &PreparedMessage) -> Result<Self::Receipt, Self::Error> {
+  async fn send(
+    &self,
+    _: &PreparedMessage,
+  ) -> Result<Self::Receipt, Self::Error> {
     Err(Rejected)
   }
 }
 
-fn welcome() -> Message {
-  Message::new(
-    Envelope::new(
-      Address::new("from@example.com".parse().unwrap()),
-      Recipients::to(Address::new("to@example.com".parse().unwrap())),
-      HeaderText::new("Welcome").unwrap(),
-    ),
-    Template::new(Body::new().push(
-      Section::new().push(Column::new().push(Text::new("Hello"))),
-    )),
-  )
+struct Welcome(Message);
+
+impl Welcome {
+  fn new() -> Self {
+    Self(Message::new(
+      Envelope::new(
+        Address::new("from@example.com".parse().unwrap()),
+        Recipients::to(Address::new("to@example.com".parse().unwrap())),
+        HeaderText::new("Welcome").unwrap(),
+      ),
+      Template::new(
+        Body::new()
+          .push(Section::new().push(Column::new().push(Text::new("Hello")))),
+      ),
+    ))
+  }
+
+  fn into_message(self) -> Message {
+    self.0
+  }
 }
 
 #[tokio::test]
 async fn configured_mailer_prepares_and_captures_once() {
   let renders = Arc::new(AtomicUsize::new(0));
-  let mailer = Mailer::new(CountingRenderer(Arc::clone(&renders)), MockTransport::new());
-  mailer.send(welcome()).await.unwrap();
+  let mailer =
+    Mailer::new(CountingRenderer(Arc::clone(&renders)), MockTransport::new());
+  mailer.send(Welcome::new().into_message()).await.unwrap();
 
   let sent = mailer.transport().sent();
   assert_eq!(sent.len(), 1);
@@ -83,14 +110,22 @@ async fn configured_mailer_prepares_and_captures_once() {
 
 #[tokio::test]
 async fn failed_submission_retains_exact_prepared_content() {
-  let mailer = Mailer::new(CountingRenderer(Arc::new(AtomicUsize::new(0))), RejectedTransport);
-  let error = mailer.send(welcome()).await.unwrap_err();
+  let mailer = Mailer::new(
+    CountingRenderer(Arc::new(AtomicUsize::new(0))),
+    RejectedTransport,
+  );
+  let error = mailer
+    .send(Welcome::new().into_message())
+    .await
+    .unwrap_err();
 
   match error {
     MailerError::Submission { prepared, error } => {
       assert_eq!(prepared.body().html(), "<p>Hello</p>");
       assert_eq!(error.acceptance(), Acceptance::NotAccepted);
     }
-    MailerError::Preparation { .. } => panic!("preparation unexpectedly failed"),
+    MailerError::Preparation { .. } => {
+      panic!("preparation unexpectedly failed")
+    }
   }
 }

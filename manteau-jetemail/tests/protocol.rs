@@ -10,31 +10,40 @@ use wiremock::{
   matchers::{header, method, path},
 };
 
-fn message() -> PreparedMessage {
-  PreparedMessage::new(
-    Envelope::new(
-      Address::new("from@example.com".parse().unwrap())
-        .name(HeaderText::new("Sender").unwrap()),
-      Recipients::to(Address::new("to@example.com".parse().unwrap())),
-      HeaderText::new("Hello").unwrap(),
-    ),
-    Rendered::new("<p>Private</p>", "Private").unwrap(),
-  )
-}
+struct Fixture(PreparedMessage);
 
-fn sender(server: &MockServer) -> Sender<JetEmail, HttpClient> {
-  Sender::new(
-    JetEmail::with_config(
-      "test-token",
-      HttpConfig::new(&format!("{}/email", server.uri())).unwrap(),
+impl Fixture {
+  fn new() -> Self {
+    Self(PreparedMessage::new(
+      Envelope::new(
+        Address::new("from@example.com".parse().unwrap())
+          .name(HeaderText::new("Sender").unwrap()),
+        Recipients::to(Address::new("to@example.com".parse().unwrap())),
+        HeaderText::new("Hello").unwrap(),
+      ),
+      Rendered::new("<p>Private</p>", "Private").unwrap(),
+    ))
+  }
+
+  fn message(&self) -> &PreparedMessage {
+    &self.0
+  }
+
+  fn sender(&self, server: &MockServer) -> Sender<JetEmail, HttpClient> {
+    Sender::new(
+      JetEmail::with_config(
+        "test-token",
+        HttpConfig::new(&format!("{}/email", server.uri())).unwrap(),
+      )
+      .unwrap(),
+      HttpClient::new().unwrap(),
     )
-    .unwrap(),
-    HttpClient::new().unwrap(),
-  )
+  }
 }
 
 #[tokio::test]
 async fn replay_preserves_key_and_body() {
+  let fixture = Fixture::new();
   let server = MockServer::start().await;
   Mock::given(method("POST"))
     .and(path("/email"))
@@ -48,9 +57,9 @@ async fn replay_preserves_key_and_body() {
     .mount(&server)
     .await;
 
-  let mail = sender(&server);
+  let mail = fixture.sender(&server);
   let key = IdempotencyKey::try_from("notification-1".to_owned()).unwrap();
-  let submission = Submission::new(key, message(), &mail);
+  let submission = Submission::new(key, fixture.message().clone(), &mail);
   let persisted = serde_json::to_vec(&submission).unwrap();
   let restored: Submission = serde_json::from_slice(&persisted).unwrap();
 
@@ -70,6 +79,7 @@ async fn replay_preserves_key_and_body() {
 
 #[tokio::test]
 async fn rejection_and_uncertainty_are_distinct() {
+  let fixture = Fixture::new();
   for (status, body, acceptance, provider_kind) in [
     (
       409,
@@ -116,10 +126,10 @@ async fn rejection_and_uncertainty_are_distinct() {
       .mount(&server)
       .await;
 
-    let mail = sender(&server);
+    let mail = fixture.sender(&server);
     let submission = Submission::new(
       IdempotencyKey::try_from("one".to_owned()).unwrap(),
-      message(),
+      fixture.message().clone(),
       &mail,
     );
     let error = mail.send_idempotent(&submission).await.unwrap_err();
@@ -141,6 +151,7 @@ async fn rejection_and_uncertainty_are_distinct() {
 
 #[test]
 fn persisted_input_remains_checked() {
+  let fixture = Fixture::new();
   for key in ["".to_owned(), "x".repeat(257), "key\r\ninjected".to_owned()] {
     assert!(IdempotencyKey::try_from(key.clone()).is_err());
     assert!(
@@ -153,7 +164,7 @@ fn persisted_input_remains_checked() {
     ("to", serde_json::json!([])),
     ("subject", serde_json::json!("x\nBcc: y")),
   ] {
-    let mut content = serde_json::to_value(message()).unwrap();
+    let mut content = serde_json::to_value(fixture.message()).unwrap();
     match field {
       "from" => content["envelope"]["from"]["email"] = value,
       "to" => content["envelope"]["recipients"]["to"] = value,
@@ -165,6 +176,7 @@ fn persisted_input_remains_checked() {
 
 #[tokio::test]
 async fn response_limit_is_enforced_after_dispatch() {
+  let fixture = Fixture::new();
   let server = MockServer::start().await;
   Mock::given(method("POST"))
     .respond_with(
@@ -182,7 +194,7 @@ async fn response_limit_is_enforced_after_dispatch() {
     JetEmail::with_config("token", config).unwrap(),
     HttpClient::new().unwrap(),
   );
-  let error = mail.send(&message()).await.unwrap_err();
+  let error = mail.send(fixture.message()).await.unwrap_err();
   assert!(matches!(
     error,
     manteau_core::SendError::Http(manteau_core::http::HttpError::ResponseLimit)
@@ -192,6 +204,7 @@ async fn response_limit_is_enforced_after_dispatch() {
 
 #[tokio::test]
 async fn total_request_timeout_keeps_acceptance_unknown() {
+  let fixture = Fixture::new();
   let server = MockServer::start().await;
   Mock::given(method("POST"))
     .respond_with(
@@ -210,7 +223,7 @@ async fn total_request_timeout_keeps_acceptance_unknown() {
     JetEmail::with_config("token", config).unwrap(),
     HttpClient::new().unwrap(),
   );
-  let error = mail.send(&message()).await.unwrap_err();
+  let error = mail.send(fixture.message()).await.unwrap_err();
   assert!(matches!(
     error,
     manteau_core::SendError::Http(manteau_core::http::HttpError::Network(_))
@@ -220,6 +233,7 @@ async fn total_request_timeout_keeps_acceptance_unknown() {
 
 #[tokio::test]
 async fn redirect_does_not_send_credentials_to_another_endpoint() {
+  let fixture = Fixture::new();
   let first = MockServer::start().await;
   let target = MockServer::start().await;
   Mock::given(method("POST"))
@@ -230,7 +244,11 @@ async fn redirect_does_not_send_credentials_to_another_endpoint() {
     .expect(1)
     .mount(&first)
     .await;
-  let error = sender(&first).send(&message()).await.unwrap_err();
+  let error = fixture
+    .sender(&first)
+    .send(fixture.message())
+    .await
+    .unwrap_err();
   assert_eq!(error.acceptance(), Acceptance::Unknown);
   assert!(target.received_requests().await.unwrap().is_empty());
 }
