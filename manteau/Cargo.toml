@@ -18,7 +18,8 @@ workspace = true
 all-features = true
 
 [features]
-default = ["tls-rustls"]
+default = ["tls-rustls", "render-mrml"]
+render-mrml = ["dep:manteau-render"]
 mailjet = ["dep:manteau-mailjet", "dep:manteau-http"]
 cloudflare = ["dep:manteau-cloudflare", "dep:manteau-http"]
 jetemail = ["dep:manteau-jetemail", "dep:manteau-http"]
@@ -29,6 +30,7 @@ tls-native = ["manteau-http?/tls-native"]
 
 [dependencies]
 manteau-http = { workspace = true, optional = true }
+manteau-render = { workspace = true, optional = true }
 manteau-core.workspace = true
 manteau-macros.workspace = true
 manteau-mailjet = { workspace = true, optional = true }

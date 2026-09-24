@@ -77,7 +77,7 @@ fn preparation_traces_operations_without_private_content() {
       Section::new().push(Column::new().push(Text::new("Private body"))),
     )),
   );
-  message.prepare().unwrap();
+  message.prepare(&manteau::MrmlRenderer::new()).unwrap();
   let spans = capture.spans.lock().unwrap();
   assert!(spans.iter().any(|span| span.name == "prepare"));
   for span in spans.iter() {

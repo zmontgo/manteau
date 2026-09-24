@@ -21,7 +21,7 @@ fn message() -> manteau_core::PreparedMessage {
     ),
     template,
   )
-  .prepare()
+  .prepare(&manteau_render::MrmlRenderer::new())
   .unwrap()
 }
 

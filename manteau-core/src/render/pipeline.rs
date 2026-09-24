@@ -1,6 +1,7 @@
-//! Rendering owned by templates and rendered bodies.
+//! Shared preparation of MJML and validated rendered bodies.
+
 use crate::{
-  render::{MjmlWriter, RenderError, RenderErrorKind},
+  render::{MjmlWriter, RenderError, Renderer},
   templating::{Element, Template},
 };
 
@@ -13,16 +14,19 @@ pub struct Rendered {
   html: String,
   text: String,
 }
+
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Bodies {
   html: String,
   text: String,
 }
+
 /// Both email body alternatives were empty.
 #[derive(Debug, thiserror::Error)]
 #[error("at least one nonempty email body is required")]
 pub struct EmptyBody;
+
 impl TryFrom<Bodies> for Rendered {
   type Error = EmptyBody;
 
@@ -30,6 +34,7 @@ impl TryFrom<Bodies> for Rendered {
     Self::new(value.html, value.text)
   }
 }
+
 impl Rendered {
   /// Accept externally rendered content. HTML is trusted markup, not sanitized.
   /// Use typed templates when interpolating untrusted text.
@@ -42,45 +47,51 @@ impl Rendered {
     if html.is_empty() && text.is_empty() {
       return Err(EmptyBody);
     }
+
     Ok(Self { html, text })
   }
 
   /// Exact HTML alternative; may be empty for plaintext-only mail.
-  pub fn html(&self) -> &str { &self.html }
+  pub fn html(&self) -> &str {
+    &self.html
+  }
 
   /// Exact plaintext alternative; may be empty for HTML-only mail.
-  pub fn text(&self) -> &str { &self.text }
+  pub fn text(&self) -> &str {
+    &self.text
+  }
 }
+
 impl std::fmt::Debug for Rendered {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str("Rendered([redacted])")
   }
 }
+
 impl Template {
-  /// Render the complete document to HTML and a plaintext alternative wrapped
-  /// at 80 columns. Rendering performs no network requests.
-  pub fn render(&self) -> Result<Rendered, RenderError> {
-    self.render_with_text(None)
+  /// Render the complete document using an explicitly chosen rendering
+  /// capability. The renderer controls HTML conversion and plaintext width.
+  pub fn render(
+    &self,
+    renderer: &impl Renderer,
+  ) -> Result<Rendered, RenderError> {
+    self.render_with_text(renderer, None)
   }
 
-  #[tracing::instrument(skip_all)]
   pub(crate) fn render_with_text(
     &self,
-    text: Option<&str>,
+    renderer: &impl Renderer,
+    explicit_text: Option<&str>,
   ) -> Result<Rendered, RenderError> {
     let mut writer = MjmlWriter::new();
     self.write_mjml(&mut writer);
-    let parsed = mrml::parse(writer.as_str())
-      .map_err(|e| RenderErrorKind::Parse.err(e))?;
-    let html = parsed
-      .element
-      .render(&Default::default())
-      .map_err(|e| RenderErrorKind::Render.err(e))?;
-    let text = match text {
+
+    let html = renderer.html(writer.as_str()).map_err(RenderError::html)?;
+    let text = match explicit_text {
       Some(text) => text.to_owned(),
-      None => html2text::from_read(html.as_bytes(), 80)
-        .map_err(|e| RenderErrorKind::Plaintext.err(e))?,
+      None => renderer.plaintext(&html).map_err(RenderError::plaintext)?,
     };
-    Ok(Rendered { html, text })
+
+    Rendered::new(html, text).map_err(RenderError::empty)
   }
 }

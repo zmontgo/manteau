@@ -20,12 +20,10 @@ all-features = true
 [dependencies]
 serde_json.workspace = true
 sha2 = "0.10"
-mrml.workspace = true
 serde.workspace = true
 async-trait.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-html2text.workspace = true
 validator.workspace = true
 askama_escape.workspace = true
 url.workspace = true

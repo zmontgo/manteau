@@ -133,7 +133,7 @@ async fn newsletter() -> Result<(), Box<dyn std::error::Error>> {
     ),
     template,
   )
-  .prepare()?;
+  .prepare(&manteau::MrmlRenderer::new())?;
 
   // MockTransport is always available — no feature flag needed.
   let transport = MockTransport::new();

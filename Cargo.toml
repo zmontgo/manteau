@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["manteau-http", "manteau", "manteau-core", "manteau-macros", "manteau-mailjet", "manteau-cloudflare", "manteau-jetemail", "manteau-mock", "manteau-stdout"]
+members = ["manteau-http", "manteau-render", "manteau", "manteau-core", "manteau-macros", "manteau-mailjet", "manteau-cloudflare", "manteau-jetemail", "manteau-mock", "manteau-stdout"]
 
 [workspace.package]
 version = "0.2.0"
@@ -15,6 +15,7 @@ unsafe_code = "forbid"
 
 [workspace.dependencies]
 manteau-http = { version = "=0.2.0", path = "manteau-http", default-features = false }
+manteau-render = { version = "=0.2.0", path = "manteau-render" }
 manteau = { version = "=0.2.0", path = "manteau" }
 manteau-core = { version = "=0.2.0", path = "manteau-core" }
 manteau-macros = { version = "=0.2.0", path = "manteau-macros" }
@@ -23,7 +24,7 @@ manteau-cloudflare = { version = "=0.2.0", path = "manteau-cloudflare" }
 manteau-jetemail = { version = "=0.2.0", path = "manteau-jetemail" }
 manteau-mock = { version = "=0.2.0", path = "manteau-mock" }
 manteau-stdout = { version = "=0.2.0", path = "manteau-stdout" }
-mrml = "6"
+mrml = { version = "6", default-features = false, features = ["parse", "render"] }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 async-trait = "0.1"

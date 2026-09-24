@@ -2,6 +2,8 @@
 //! See the crate README for installation and the complete sending example.
 pub use manteau_core::*;
 pub use manteau_macros::mjml;
+#[cfg(feature = "render-mrml")]
+pub use manteau_render::{InvalidTextWidth, MrmlError, MrmlRenderer};
 /// Common template, envelope, and transport imports.
 pub mod prelude {
   pub use manteau_core::prelude::*;

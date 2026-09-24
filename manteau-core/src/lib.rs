@@ -10,9 +10,11 @@ pub mod transport;
 pub use idempotency::*;
 pub use message::*;
 pub use models::*;
-pub use render::{RenderError, RenderErrorKind, Rendered};
+pub use render::{RenderError, RenderErrorKind, Rendered, Renderer};
 pub use transport::*;
 
 pub mod http;
 pub mod sender;
-pub use sender::{HttpProvider, StatusPolicy, IdempotentProvider, Sender, SendError};
+pub use sender::{
+  HttpProvider, IdempotentProvider, SendError, Sender, StatusPolicy,
+};

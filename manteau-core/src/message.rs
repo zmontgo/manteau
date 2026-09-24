@@ -1,5 +1,8 @@
 //! Envelopes, renderable messages, and immutable transport input.
-use crate::{Address, HeaderText, RenderError, Rendered, templating::Template};
+use crate::{
+  Address, HeaderText, RenderError, Rendered, render::Renderer,
+  templating::Template,
+};
 
 /// Nonempty recipient lists, preserving To, Cc, and Bcc roles.
 /// No mutation can remove the last recipient. Provider-specific limits are
@@ -83,13 +86,19 @@ impl Recipients {
   }
 
   /// Primary recipients, in insertion order.
-  pub fn to_addresses(&self) -> &[Address] { &self.to }
+  pub fn to_addresses(&self) -> &[Address] {
+    &self.to
+  }
 
   /// Carbon-copy recipients, in insertion order.
-  pub fn cc_addresses(&self) -> &[Address] { &self.cc }
+  pub fn cc_addresses(&self) -> &[Address] {
+    &self.cc
+  }
 
   /// Blind-copy recipients. Do not include these in visible email headers.
-  pub fn bcc_addresses(&self) -> &[Address] { &self.bcc }
+  pub fn bcc_addresses(&self) -> &[Address] {
+    &self.bcc
+  }
 
   /// Every recipient, ordered by To, then Cc, then Bcc.
   pub fn iter(&self) -> impl Iterator<Item = &Address> {
@@ -121,13 +130,19 @@ impl Envelope {
   }
 
   /// Sender mailbox; provider authorization is checked remotely.
-  pub fn from(&self) -> &Address { &self.from }
+  pub fn from(&self) -> &Address {
+    &self.from
+  }
 
   /// Recipients with their header roles preserved.
-  pub fn recipients(&self) -> &Recipients { &self.recipients }
+  pub fn recipients(&self) -> &Recipients {
+    &self.recipients
+  }
 
   /// Explicit access to the potentially private subject.
-  pub fn subject(&self) -> &str { self.subject.as_str() }
+  pub fn subject(&self) -> &str {
+    self.subject.as_str()
+  }
 }
 
 /// A template bound to an envelope. Prepare once before submitting to
@@ -157,8 +172,13 @@ impl Message {
   /// Render once and freeze the exact envelope and bodies sent to every
   /// adapter.
   #[tracing::instrument(skip_all)]
-  pub fn prepare(&self) -> Result<PreparedMessage, RenderError> {
-    let body = self.template.render_with_text(self.text.as_deref())?;
+  pub fn prepare(
+    &self,
+    renderer: &impl Renderer,
+  ) -> Result<PreparedMessage, RenderError> {
+    let body = self
+      .template
+      .render_with_text(renderer, self.text.as_deref())?;
     Ok(PreparedMessage::new(self.envelope.clone(), body))
   }
 }
@@ -187,11 +207,15 @@ impl PreparedMessage {
   }
 
   /// Routing and header values; no mutable access is exposed.
-  pub fn envelope(&self) -> &Envelope { &self.0.envelope }
+  pub fn envelope(&self) -> &Envelope {
+    &self.0.envelope
+  }
 
   /// Exact rendered content, unchanged across clones and serialization round
   /// trips.
-  pub fn body(&self) -> &Rendered { &self.0.body }
+  pub fn body(&self) -> &Rendered {
+    &self.0.body
+  }
 }
 impl std::fmt::Debug for PreparedMessage {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

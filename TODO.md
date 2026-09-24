@@ -76,7 +76,7 @@ and submission, without inventing a query-engine-shaped layer.
     constraints and payload-version stability. Do not claim the scope hash alone
     proves either. Reject unsupported replay conditions before dispatch.
 
-- [x] 4. **Provider-specific implementations and protocol evidence** — current change.
+- [x] 4. **Provider-specific implementations and protocol evidence** — `xrtuunmy`.
   - `manteau-jetemail/src/`: a configured JetEmail type implementing core's
     provider ports, its request/response values, documented envelope restrictions,
     queue acceptance and idempotency-conflict interpretation. No header assembly,
@@ -97,7 +97,7 @@ and submission, without inventing a query-engine-shaped layer.
     unintended second physical request. Use official provider documentation;
     mocks verify our implementation, not the external service's guarantees.
 
-- [ ] 5. **Rendering inversion and reusable core operations** — next change.
+- [x] 5. **Rendering inversion and reusable core operations** — current change.
   - `manteau-core/src/render/`: define the rendering port and output/error
     contracts; retain template-to-MJML generation, escaping, and reusable
     preparation mechanics against ports. No mrml/html2text dependency or
@@ -114,7 +114,7 @@ and submission, without inventing a query-engine-shaped layer.
     not add ceremony or artificial methods to make a narrow port look deep.
     Record where the explicit inversion requirement calls for a narrow port.
 
-- [ ] 6. **Main-crate consumer behavior and configured composition**.
+- [ ] 6. **Main-crate consumer behavior and configured composition** — next change.
   - `manteau/src/message.rs`: consumer intent combines a validated envelope,
     template, and optional plaintext alternative. Adapters only receive core's
     immutable PreparedMessage; they do not depend on this authoring type.

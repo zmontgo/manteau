@@ -116,7 +116,7 @@ async fn builder() -> Result<(), Box<dyn std::error::Error>> {
     ),
     template,
   )
-  .prepare()?;
+  .prepare(&manteau::MrmlRenderer::new())?;
 
   let transport = MockTransport::new();
   transport.send(&msg).await?;

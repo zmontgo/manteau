@@ -1,10 +1,11 @@
-//! Rendering adapter: walks the [`crate::templating`] model and emits MJML,
-//! then HTML, then plaintext.
+//! Core-owned MJML generation, rendering contracts, and validated bodies.
 
-pub mod error;
-pub mod pipeline;
+mod error;
+mod pipeline;
+mod port;
 pub mod writer;
 
 pub use error::{RenderError, RenderErrorKind};
 pub use pipeline::{EmptyBody, Rendered};
+pub use port::Renderer;
 pub use writer::{ElementWriter, MjmlWriter};

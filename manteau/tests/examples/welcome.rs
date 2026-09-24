@@ -105,7 +105,7 @@ async fn welcome() -> Result<(), Box<dyn std::error::Error>> {
     ),
     template,
   )
-  .prepare()?;
+  .prepare(&manteau::MrmlRenderer::new())?;
 
   let transport = MockTransport::new();
   let receipt = transport.send(&msg).await?;

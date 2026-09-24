@@ -29,7 +29,7 @@ fn message(subject: &str, extra: bool) -> manteau_core::PreparedMessage {
         .push(Section::new().push(Column::new().push(Text::new("Hi!")))),
     ),
   )
-  .prepare()
+  .prepare(&manteau_render::MrmlRenderer::new())
   .unwrap()
 }
 fn sender(server: &MockServer) -> Sender<Cloudflare, HttpClient> {

@@ -1,14 +1,14 @@
 [package]
-name = "manteau-mailjet"
+name = "manteau-render"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Mailjet transport for Manteau prepared emails."
+description = "MJML and plaintext rendering implementation for Manteau."
 readme = "README.md"
-keywords = ["email", "mjml", "transactional"]
+keywords = ["email", "mjml", "rendering"]
 categories = ["email", "template-engine"]
 
 [lints]
@@ -19,12 +19,6 @@ all-features = true
 
 [dependencies]
 manteau-core.workspace = true
+mrml.workspace = true
+html2text.workspace = true
 thiserror.workspace = true
-serde.workspace = true
-
-[dev-dependencies]
-serde_json.workspace = true
-manteau-render.workspace = true
-manteau-http = { workspace = true, features = ["tls-native"] }
-tokio.workspace = true
-wiremock.workspace = true

@@ -1,35 +1,30 @@
-//! Errors produced by the render pipeline.
-//!
-//! Follows manteau's standard error shape — opaque struct over a private
-//! `kind` taxonomy + preserved `source`. `Display` delegates to the source so
-//! operator logs carry the upstream library's message intact. Callers branch
-//! on [`RenderError::kind`] for programmatic decisions.
+//! Failure information for preparation through a rendering port.
 
-/// The category of a [`RenderError`] failure.
-///
-/// Closed set, named for the failure source within the render pipeline.
-/// All variants are pure tags — incident details (input that failed, mrml
-/// position, html2text context) live in the `source` chain.
-#[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+/// The stage where preparing an email failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderErrorKind {
-  /// `mrml::parse` rejected the MJML we generated. Indicates a bug in
-  /// manteau's renderer producing malformed MJML.
-  #[error("failed to parse generated MJML")]
-  Parse,
-  /// `mrml` parsed the MJML but failed to render it to HTML. Indicates a
-  /// bug in mrml or pathological MJML structure.
-  #[error("failed to render MJML to HTML")]
-  Render,
-  /// `html2text` failed to convert the rendered HTML to plaintext.
-  /// Should not occur on well-formed HTML produced by mrml.
-  #[error("failed to convert HTML to plaintext")]
+  /// The renderer could not turn generated MJML into HTML.
+  Html,
+  /// The renderer could not derive plaintext from HTML.
   Plaintext,
+  /// Both supplied body alternatives were empty.
+  Empty,
 }
 
-/// Error returned from the render pipeline.
-#[derive(Debug, thiserror::Error)]
-#[error("{source}")]
+impl std::fmt::Display for RenderErrorKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Html => f.write_str("could not render email HTML"),
+      Self::Plaintext => f.write_str("could not render email plaintext"),
+      Self::Empty => f.write_str("renderer produced no email body"),
+    }
+  }
+}
+
+/// Sanitized preparation failure. The source retains details for an operator
+/// who explicitly inspects it; ordinary formatting omits private content.
+#[derive(thiserror::Error)]
+#[error("{kind}")]
 pub struct RenderError {
   kind:   RenderErrorKind,
   #[source]
@@ -37,21 +32,39 @@ pub struct RenderError {
 }
 
 impl RenderError {
-  /// The category of failure. Callers branch on this for programmatic
-  /// decisions; the human-readable message comes from the source chain.
-  pub fn kind(&self) -> RenderErrorKind { self.kind }
+  /// The stage that failed.
+  pub fn kind(&self) -> RenderErrorKind {
+    self.kind
+  }
+
+  pub(crate) fn html(
+    source: impl std::error::Error + Send + Sync + 'static,
+  ) -> Self {
+    Self {
+      kind:   RenderErrorKind::Html,
+      source: Box::new(source),
+    }
+  }
+
+  pub(crate) fn plaintext(
+    source: impl std::error::Error + Send + Sync + 'static,
+  ) -> Self {
+    Self {
+      kind:   RenderErrorKind::Plaintext,
+      source: Box::new(source),
+    }
+  }
+
+  pub(crate) fn empty(source: super::EmptyBody) -> Self {
+    Self {
+      kind:   RenderErrorKind::Empty,
+      source: Box::new(source),
+    }
+  }
 }
 
-impl RenderErrorKind {
-  /// Internal constructor — pair a kind with the underlying source error.
-  /// Not exposed publicly so consumers cannot fabricate manteau errors.
-  pub(crate) fn err(
-    self,
-    source: impl Into<Box<dyn std::error::Error + Send + Sync>>,
-  ) -> RenderError {
-    RenderError {
-      kind:   self,
-      source: source.into(),
-    }
+impl std::fmt::Debug for RenderError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    std::fmt::Display::fmt(self, f)
   }
 }

@@ -24,6 +24,7 @@ serde.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+manteau-render.workspace = true
 manteau-http = { workspace = true, features = ["tls-native"] }
 tokio.workspace = true
 wiremock.workspace = true
