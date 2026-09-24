@@ -1,0 +1,37 @@
+[package]
+name = "manteau-jetemail"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Jetemail transport for Manteau prepared emails."
+readme = "README.md"
+keywords = ["email", "mjml", "transactional"]
+categories = ["email", "template-engine"]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["tls-rustls"]
+tls-rustls = ["reqwest/rustls"]
+tls-native = ["reqwest/native-tls"]
+
+[dependencies]
+manteau-core.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+
+[dev-dependencies]
+tokio.workspace = true
+wiremock.workspace = true

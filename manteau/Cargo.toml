@@ -1,0 +1,43 @@
+[package]
+name = "manteau"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Typed email templates with independently pluggable delivery providers."
+readme = "README.md"
+keywords = ["email", "mjml", "transactional"]
+categories = ["email", "template-engine"]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+mailjet = ["dep:manteau-mailjet"]
+cloudflare = ["dep:manteau-cloudflare"]
+jetemail = ["dep:manteau-jetemail"]
+mock = ["dep:manteau-mock"]
+stdout = ["dep:manteau-stdout"]
+tls-rustls = ["manteau-mailjet?/tls-rustls", "manteau-cloudflare?/tls-rustls", "manteau-jetemail?/tls-rustls"]
+tls-native = ["manteau-mailjet?/tls-native", "manteau-cloudflare?/tls-native", "manteau-jetemail?/tls-native"]
+
+[dependencies]
+manteau-core.workspace = true
+manteau-macros.workspace = true
+manteau-mailjet = { workspace = true, optional = true }
+manteau-cloudflare = { workspace = true, optional = true }
+manteau-jetemail = { workspace = true, optional = true }
+manteau-mock = { workspace = true, optional = true }
+manteau-stdout = { workspace = true, optional = true }
+
+[dev-dependencies]
+manteau-mock.workspace = true
+tokio.workspace = true
+tracing-subscriber = "0.3"
+serde_json.workspace = true

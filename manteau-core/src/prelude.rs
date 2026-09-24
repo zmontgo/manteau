@@ -1,0 +1,26 @@
+//! Common imports for using manteau's typed MJML DSL.
+//!
+//! Glob-import this to get every first-class element type, child enum, the
+//! [`Push`] trait that unifies parent/child appends across containers,
+//! every attribute value type, and the [`mjml!`] macro for declarative
+//! template construction.
+//!
+
+//!
+//! ```
+//! use manteau_core::prelude::*;
+//!
+//! let _ =
+//!   Body::new().push(Section::new().push(Column::new().push(Text::new("Hi"))));
+//! ```
+//!
+//! [`Push`]: crate::templating::push::Push
+
+pub use crate::{
+  Transport,
+  models::{Address, EmailAddress, MessageId},
+  templating::{
+    Block, Body, BodyChild, Button, Column, Element, Image, Push, Section,
+    Template, Text, Wrapper, attributes::prelude::*,
+  },
+};

@@ -1,12 +1,12 @@
 [package]
-name = "manteau-macros"
+name = "manteau-mock"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Procedural template syntax for Manteau."
+description = "Mock transport for Manteau prepared emails."
 readme = "README.md"
 keywords = ["email", "mjml", "transactional"]
 categories = ["email", "template-engine"]
@@ -17,12 +17,12 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[lib]
-proc-macro = true
-
 [dependencies]
-proc-macro2 = "1"
-quote = "1"
-syn = { version = "2", features = ["full", "visit-mut"] }
-url.workspace = true
-proc-macro-crate = "3"
+manteau-core.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+wiremock.workspace = true
