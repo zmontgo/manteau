@@ -39,9 +39,13 @@ impl<R: Renderer, T: Transport> Mailer<R, T> {
     &self,
     message: Message,
   ) -> Result<T::Receipt, MailerError<T::Error>> {
-    let prepared = self
-      .prepare(&message)
-      .map_err(|error| MailerError::Preparation { message, error })?;
+    let prepared =
+      self
+        .prepare(&message)
+        .map_err(|error| MailerError::Preparation {
+          message: Box::new(message),
+          error,
+        })?;
     self
       .transport
       .send(&prepared)
@@ -51,7 +55,7 @@ impl<R: Renderer, T: Transport> Mailer<R, T> {
 }
 
 #[cfg(any(feature = "mailjet", feature = "cloudflare", feature = "jetemail"))]
-impl<R: Renderer, P: manteau_core::HttpProvider>
+impl<R: Renderer, P: manteau_core::HttpProvider + 'static>
   Mailer<R, manteau_core::Sender<P, manteau_http::HttpClient>>
 {
   /// Assemble a provider with the standard pooled HTTP driver.
@@ -81,7 +85,7 @@ pub enum MailerError<E: manteau_core::TransportFailure> {
   #[error("could not prepare email")]
   Preparation {
     /// Original authoring intent.
-    message: Message,
+    message: Box<Message>,
     /// Rendering failure with explicit source access.
     #[source]
     error:   RenderError,

@@ -226,7 +226,7 @@ and submission, without inventing a query-engine-shaped layer.
     workspace tests including local provider protocol servers. The tested
     JetEmail protocol case is linked as the durable replay example.
 
-- [ ] 11. **Release verification and measured optimization**.
+- [x] 11. **Release verification and measured optimization** — `ypvnznul`.
   - Root manifests/Cargo.lock: consistent 0.2 versions, workspace dependency
     graph, minimal production dependencies, correct independent package metadata.
   - `.github/workflows/ci.yml`: workspace and independent-package checks, supported
@@ -244,6 +244,18 @@ and submission, without inventing a query-engine-shaped layer.
     configurations; run protocol tests with their required loopback permission.
   - Final source/ownership/dependency scan, succinct jj description, `jj new`,
     complete the goal, then wait for direction on SCRATCHPAD.md.
+  - Rust 1.85 fails on locked ICU/idna dependencies. Rust 1.88 checks the full
+    workspace, all targets and features after an explicit provider lifetime
+    bound; the workspace now declares 1.88. All-feature tests, doctests,
+    clippy, rustdoc, formatting, and the feature/TLS matrix pass. The renamed
+    consumer fixture checks independently.
+  - An opt-in local measurement over 500 representative operations took about
+    693 ms to prepare and 5.8 µs to clone an already prepared message on this
+    host. These are observations, not performance guarantees; no cache was
+    introduced. The large failure variant now boxes the retained message.
+  - Every package lists README and both licenses. `manteau-core` packaged
+    successfully. Other crate tarballs cannot be verified before their local
+    path dependencies exist in a registry; package file lists were inspected.
 
 ## Operating constraints
 

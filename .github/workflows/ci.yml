@@ -12,7 +12,6 @@ env:
 
 jobs:
   fmt:
-    name: rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,8 +20,45 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.88.0'
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets --all-features --locked
+
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        args:
+          - '--workspace --all-targets --all-features'
+          - '-p manteau --lib --no-default-features'
+          - '-p manteau --all-targets --no-default-features --features render-mrml,mock'
+          - '-p manteau --lib --no-default-features --features mailjet,tls-rustls'
+          - '-p manteau --lib --no-default-features --features cloudflare,tls-rustls'
+          - '-p manteau --lib --no-default-features --features jetemail,tls-rustls'
+          - '-p manteau-http --all-targets --no-default-features --features tls-native'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check ${{ matrix.args }} --locked
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features --locked
+      - run: cargo check --manifest-path manteau/tests/fixtures/renamed/Cargo.toml
+
   clippy:
-    name: clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,39 +66,9 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-features --all-targets -- -D warnings
-
-  check:
-    name: cargo check
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        features:
-          - ""
-          - "mailjet"
-          - "jetemail"
-          - "cloudflare"
-          - "stdout"
-          - "mailjet,stdout"
-    env:
-      FEATURES: ${{ matrix.features }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo check --no-default-features --features "$FEATURES"
-
-  test:
-    name: cargo test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all-features
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
   doc:
-    name: cargo doc
     runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: -Dwarnings
@@ -70,4 +76,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo doc --all-features --no-deps
+      - run: cargo doc --workspace --all-features --no-deps --locked
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: |
+          for package in manteau-core manteau-macros manteau-render manteau-http manteau-mailjet manteau-cloudflare manteau-jetemail manteau-mock manteau-stdout manteau; do
+            cargo package --list --locked -p "$package" > /dev/null
+          done

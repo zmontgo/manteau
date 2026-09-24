@@ -134,7 +134,7 @@ impl<P, H> std::fmt::Debug for Sender<P, H> {
 }
 
 #[async_trait]
-impl<P: HttpProvider, H: Http> Transport for Sender<P, H> {
+impl<P: HttpProvider + 'static, H: Http> Transport for Sender<P, H> {
   type Error = SendError<P::Error>;
   type Receipt = P::Receipt;
 
@@ -148,7 +148,9 @@ impl<P: HttpProvider, H: Http> Transport for Sender<P, H> {
 }
 
 #[async_trait]
-impl<P: IdempotentProvider, H: Http> IdempotentTransport for Sender<P, H> {
+impl<P: IdempotentProvider + 'static, H: Http> IdempotentTransport
+  for Sender<P, H>
+{
   fn retention(&self) -> Duration {
     self.provider.retention()
   }
