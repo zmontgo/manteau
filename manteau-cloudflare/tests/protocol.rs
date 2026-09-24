@@ -1,7 +1,7 @@
 use manteau_cloudflare::{Cloudflare, CloudflareErrorKind};
 use manteau_core::{
-  Acceptance, Address, Envelope, HeaderText, Message, Receipt, Recipients,
-  Sender, Transport, TransportFailure, http::HttpConfig, prelude::*,
+  Acceptance, Address, Envelope, HeaderText, PreparedMessage, Receipt, Recipients, Rendered,
+  Sender, Transport, TransportFailure, http::HttpConfig,
 };
 use manteau_http::HttpClient;
 use wiremock::{
@@ -18,19 +18,14 @@ fn message(subject: &str, extra: bool) -> manteau_core::PreparedMessage {
   } else {
     recipients
   };
-  Message::new(
+  PreparedMessage::new(
     Envelope::new(
       Address::new("from@example.com".parse().unwrap()),
       recipients,
       HeaderText::new(subject).unwrap(),
     ),
-    Template::new(
-      Body::new()
-        .push(Section::new().push(Column::new().push(Text::new("Hi!")))),
-    ),
+    Rendered::new("<p>Hi!</p>", "Hi!").unwrap(),
   )
-  .prepare(&manteau_render::MrmlRenderer::new())
-  .unwrap()
 }
 fn sender(server: &MockServer) -> Sender<Cloudflare, HttpClient> {
   Sender::new(

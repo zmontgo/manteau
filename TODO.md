@@ -97,7 +97,7 @@ and submission, without inventing a query-engine-shaped layer.
     unintended second physical request. Use official provider documentation;
     mocks verify our implementation, not the external service's guarantees.
 
-- [x] 5. **Rendering inversion and reusable core operations** — current change.
+- [x] 5. **Rendering inversion and reusable core operations** — `swttrouk`.
   - `manteau-core/src/render/`: define the rendering port and output/error
     contracts; retain template-to-MJML generation, escaping, and reusable
     preparation mechanics against ports. No mrml/html2text dependency or
@@ -114,7 +114,12 @@ and submission, without inventing a query-engine-shaped layer.
     not add ceremony or artificial methods to make a narrow port look deep.
     Record where the explicit inversion requirement calls for a narrow port.
 
-- [ ] 6. **Main-crate consumer behavior and configured composition** — next change.
+- [x] 6. **Main-crate consumer behavior and configured composition** — current change.
+  - Strengthen the rendering boundary as part of this composition: the
+    `Renderer` port returns core-owned checked HTML/plaintext values, and main
+    consumes those values without repeating validation. Name the exact promise
+    (for example nonempty HTML output and disallowed control characters);
+    never equate “renderer output” with XSS-safe HTML by assertion alone.
   - `manteau/src/message.rs`: consumer intent combines a validated envelope,
     template, and optional plaintext alternative. Adapters only receive core's
     immutable PreparedMessage; they do not depend on this authoring type.
@@ -132,7 +137,34 @@ and submission, without inventing a query-engine-shaped layer.
   - Test custom renderer/transport composition, exactly one render per prepared
     message, failed-send recovery retaining identical content, and mock usage.
 
-- [ ] 7. **Value contracts, ownership, and extension boundaries**.
+- [ ] 7. **Value contracts, ownership, and extension boundaries** — next change.
+  - Audit public fields across every workspace crate, including `Body`, all
+    MJML elements, envelopes, provider models, and configuration. Make
+    invariant-bearing state private; provide owner methods for legitimate
+    inspection and changes. Direct field mutation must be justified by the
+    type's actual contract, not convenience. Check serde and macro construction
+    paths as alternate constructors.
+  - Make templates reusable for runtime hydration: analyze typed placeholders
+    for text, URL, subject, and other supported roles, the binding API,
+    missing/extra binding errors, compiled representation, reuse and caching
+    costs, and escaping at the final sink. Compare a small structural slot
+    engine with `upon`, MiniJinja, and TinyTemplate. Do not interpolate into
+    already rendered HTML or expose an arbitrary `String` context. Implement
+    the chosen safe path with focused reuse/injection tests.
+  - Audit every port argument and result (`Renderer`, `Http`, `HttpProvider`,
+    `Transport`) for primitive or generic values whose meaning makes callers
+    recheck them. Introduce owner types with private state and checked
+    construction for JSON request bodies, response status/evidence, bounded
+    responses, HTML/plaintext, and provider receipt facts where the contract
+    warrants it. Remove generic parameters that only hide an unconstrained
+    string or serialization contract. Test deserialization and extension
+    boundaries as well as normal constructors.
+  - Evaluate `safehtml` 0.2's `SafeHtml`/`SafeUrl` for author-controlled HTML
+    fragments and URLs. Its safety contract cannot be attached to complete
+    MJML-rendered email until every custom element, style, URL, and unchecked
+    conversion path satisfies it. Consider `ammonia` for explicitly sanitized
+    snippets; its default policy changes email layout, so it is not a blanket
+    renderer-output validator. Document the selected contracts and tradeoffs.
   - `manteau-core/src/templating/attributes/`: finite numeric values, field-valid
     dimensions and URL roles, truthful color validation, checked construction,
     and intentional conversion APIs. Keep typed builders discoverable.

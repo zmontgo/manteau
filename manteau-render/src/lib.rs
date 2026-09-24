@@ -2,7 +2,7 @@
 //! The parser uses its no-op include loader, so rendering does not fetch
 //! remote content or resolve local files.
 
-use manteau_core::Renderer;
+use manteau_core::render::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody, Renderer};
 
 /// Configured MJML renderer. The default plaintext line width is 80 columns.
 #[derive(Debug, Clone, Copy)]
@@ -54,6 +54,14 @@ pub enum MrmlError {
   /// HTML could not be converted to plaintext.
   #[error("could not convert HTML to plaintext")]
   Plaintext(#[source] html2text::Error),
+
+  /// Rendered HTML violated the core body contract.
+  #[error("rendered HTML violated the email body contract")]
+  HtmlContract(#[source] InvalidHtmlBody),
+
+  /// Converted plaintext contained a forbidden character.
+  #[error("rendered plaintext violated the email body contract")]
+  PlaintextContract(#[source] InvalidPlaintextBody),
 }
 
 impl std::fmt::Debug for MrmlError {
@@ -65,18 +73,20 @@ impl std::fmt::Debug for MrmlError {
 impl Renderer for MrmlRenderer {
   type Error = MrmlError;
 
-  fn html(&self, mjml: &str) -> Result<String, Self::Error> {
+  fn html(&self, mjml: &MjmlDocument) -> Result<HtmlBody, Self::Error> {
     let options = mrml::prelude::parser::ParserOptions::default();
     let parsed =
-      mrml::parse_with_options(mjml, &options).map_err(MrmlError::Parse)?;
-    parsed
+      mrml::parse_with_options(mjml.as_str(), &options).map_err(MrmlError::Parse)?;
+    let html = parsed
       .element
       .render(&Default::default())
-      .map_err(MrmlError::Html)
+      .map_err(MrmlError::Html)?;
+    HtmlBody::new(html).map_err(MrmlError::HtmlContract)
   }
 
-  fn plaintext(&self, html: &str) -> Result<String, Self::Error> {
-    html2text::from_read(html.as_bytes(), self.text_width)
-      .map_err(MrmlError::Plaintext)
+  fn plaintext(&self, html: &HtmlBody) -> Result<PlaintextBody, Self::Error> {
+    let text = html2text::from_read(html.as_str().as_bytes(), self.text_width)
+      .map_err(MrmlError::Plaintext)?;
+    PlaintextBody::new(text).map_err(MrmlError::PlaintextContract)
   }
 }

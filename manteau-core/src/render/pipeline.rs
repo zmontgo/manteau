@@ -1,7 +1,7 @@
 //! Shared preparation of MJML and validated rendered bodies.
 
 use crate::{
-  render::{MjmlWriter, RenderError, Renderer},
+  render::{HtmlBody, MjmlDocument, MjmlWriter, PlaintextBody, RenderError, Renderer},
   templating::{Element, Template},
 };
 
@@ -36,6 +36,10 @@ impl TryFrom<Bodies> for Rendered {
 }
 
 impl Rendered {
+  pub(crate) fn from_renderer(html: HtmlBody, text: PlaintextBody) -> Self {
+    Self { html: html.into_string(), text: text.into_string() }
+  }
+
   /// Accept externally rendered content. HTML is trusted markup, not sanitized.
   /// Use typed templates when interpolating untrusted text.
   pub fn new(
@@ -78,7 +82,9 @@ impl Template {
     self.render_with_text(renderer, None)
   }
 
-  pub(crate) fn render_with_text(
+  /// Render HTML and use the supplied plaintext alternative when present.
+  /// This skips plaintext conversion while retaining body validation.
+  pub fn render_with_text(
     &self,
     renderer: &impl Renderer,
     explicit_text: Option<&str>,
@@ -86,12 +92,13 @@ impl Template {
     let mut writer = MjmlWriter::new();
     self.write_mjml(&mut writer);
 
-    let html = renderer.html(writer.as_str()).map_err(RenderError::html)?;
+    let document = MjmlDocument::new(writer.into_string());
+    let html = renderer.html(&document).map_err(RenderError::html)?;
     let text = match explicit_text {
-      Some(text) => text.to_owned(),
+      Some(text) => PlaintextBody::new(text).map_err(RenderError::plaintext)?,
       None => renderer.plaintext(&html).map_err(RenderError::plaintext)?,
     };
 
-    Rendered::new(html, text).map_err(RenderError::empty)
+    Ok(Rendered::from_renderer(html, text))
   }
 }

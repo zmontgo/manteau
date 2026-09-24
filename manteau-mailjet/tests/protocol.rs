@@ -1,6 +1,6 @@
 use manteau_core::{
-  Acceptance, Address, Envelope, HeaderText, Message, Receipt, Recipients,
-  Sender, Transport, TransportFailure, http::HttpConfig, prelude::*,
+  Acceptance, Address, Envelope, HeaderText, PreparedMessage, Receipt, Recipients, Rendered,
+  Sender, Transport, TransportFailure, http::HttpConfig,
 };
 use manteau_http::HttpClient;
 use manteau_mailjet::{Mailjet, MailjetErrorKind};
@@ -10,19 +10,14 @@ use wiremock::{
 };
 
 fn message() -> manteau_core::PreparedMessage {
-  let template = Template::new(
-    Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
-  );
-  Message::new(
+  PreparedMessage::new(
     Envelope::new(
       Address::new("from@example.com".parse().unwrap()),
       Recipients::to(Address::new("to@example.com".parse().unwrap())),
       HeaderText::new("Hello").unwrap(),
     ),
-    template,
+    Rendered::new("<p>Hi!</p>", "Hi!").unwrap(),
   )
-  .prepare(&manteau_render::MrmlRenderer::new())
-  .unwrap()
 }
 
 fn sender(server: &MockServer) -> Sender<Mailjet, HttpClient> {

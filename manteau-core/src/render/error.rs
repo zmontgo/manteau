@@ -7,8 +7,6 @@ pub enum RenderErrorKind {
   Html,
   /// The renderer could not derive plaintext from HTML.
   Plaintext,
-  /// Both supplied body alternatives were empty.
-  Empty,
 }
 
 impl std::fmt::Display for RenderErrorKind {
@@ -16,7 +14,6 @@ impl std::fmt::Display for RenderErrorKind {
     match self {
       Self::Html => f.write_str("could not render email HTML"),
       Self::Plaintext => f.write_str("could not render email plaintext"),
-      Self::Empty => f.write_str("renderer produced no email body"),
     }
   }
 }
@@ -55,12 +52,6 @@ impl RenderError {
     }
   }
 
-  pub(crate) fn empty(source: super::EmptyBody) -> Self {
-    Self {
-      kind:   RenderErrorKind::Empty,
-      source: Box::new(source),
-    }
-  }
 }
 
 impl std::fmt::Debug for RenderError {

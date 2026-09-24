@@ -1,11 +1,7 @@
-use std::{
-  convert::Infallible,
-  sync::atomic::{AtomicUsize, Ordering},
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use manteau_core::{
-  Address, Envelope, HeaderText, Message, Recipients, RenderErrorKind,
-  Renderer,
+  HtmlBody, InvalidHtmlBody, MjmlDocument, PlaintextBody, RenderErrorKind, Renderer,
   templating::{Body, Column, Push, Section, Template, Text},
 };
 
@@ -28,18 +24,18 @@ impl ProbeRenderer {
 }
 
 impl Renderer for ProbeRenderer {
-  type Error = Infallible;
+  type Error = InvalidHtmlBody;
 
-  fn html(&self, mjml: &str) -> Result<String, Infallible> {
-    assert!(mjml.contains("<mj-text>hello</mj-text>"));
+  fn html(&self, mjml: &MjmlDocument) -> Result<HtmlBody, Self::Error> {
+    assert!(mjml.as_str().contains("<mj-text>hello</mj-text>"));
     self.html_calls.fetch_add(1, Ordering::SeqCst);
-    Ok(self.html.clone())
+    HtmlBody::new(self.html.clone())
   }
 
-  fn plaintext(&self, html: &str) -> Result<String, Infallible> {
-    assert_eq!(html, self.html);
+  fn plaintext(&self, html: &HtmlBody) -> Result<PlaintextBody, Self::Error> {
+    assert_eq!(html.as_str(), self.html);
     self.plaintext_calls.fetch_add(1, Ordering::SeqCst);
-    Ok(self.text.clone())
+    Ok(PlaintextBody::new(self.text.clone()).unwrap())
   }
 }
 
@@ -59,23 +55,15 @@ fn core_composes_rendering_without_a_concrete_library() {
 }
 
 #[test]
-fn supplied_plaintext_skips_conversion_and_empty_output_fails() {
+fn supplied_plaintext_skips_conversion_and_empty_html_is_rejected() {
   let renderer = ProbeRenderer::new("<p>hello</p>", "unused");
-  let message = Message::new(
-    Envelope::new(
-      Address::new("from@example.com".parse().unwrap()),
-      Recipients::to(Address::new("to@example.com".parse().unwrap())),
-      HeaderText::new("Subject").unwrap(),
-    ),
-    Template::new(
+  let template = Template::new(
       Body::new()
         .push(Section::new().push(Column::new().push(Text::new("hello")))),
-    ),
-  )
-  .text("supplied");
-  let prepared = message.prepare(&renderer).unwrap();
+    );
+  let rendered = template.render_with_text(&renderer, Some("supplied")).unwrap();
 
-  assert_eq!(prepared.body().text(), "supplied");
+  assert_eq!(rendered.text(), "supplied");
   assert_eq!(renderer.html_calls.load(Ordering::SeqCst), 1);
   assert_eq!(renderer.plaintext_calls.load(Ordering::SeqCst), 0);
 
@@ -84,5 +72,5 @@ fn supplied_plaintext_skips_conversion_and_empty_output_fails() {
     Body::new().push(Section::new().push(Column::new().push(Text::new("hello"))))
   );
   let error = template.render(&empty).unwrap_err();
-  assert_eq!(error.kind(), RenderErrorKind::Empty);
+  assert_eq!(error.kind(), RenderErrorKind::Html);
 }

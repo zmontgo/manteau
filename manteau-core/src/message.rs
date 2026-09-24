@@ -1,8 +1,5 @@
-//! Envelopes, renderable messages, and immutable transport input.
-use crate::{
-  Address, HeaderText, RenderError, Rendered, render::Renderer,
-  templating::Template,
-};
+//! Validated envelopes and immutable transport input.
+use crate::{Address, HeaderText, Rendered};
 
 /// Nonempty recipient lists, preserving To, Cc, and Bcc roles.
 /// No mutation can remove the last recipient. Provider-specific limits are
@@ -142,49 +139,6 @@ impl Envelope {
   /// Explicit access to the potentially private subject.
   pub fn subject(&self) -> &str {
     self.subject.as_str()
-  }
-}
-
-/// A template bound to an envelope. Prepare once before submitting to
-/// transports.
-#[derive(Clone)]
-pub struct Message {
-  envelope: Envelope,
-  template: Template,
-  text:     Option<String>,
-}
-impl Message {
-  /// Bind a complete envelope to a renderable template.
-  pub fn new(envelope: Envelope, template: Template) -> Self {
-    Self {
-      envelope,
-      template,
-      text: None,
-    }
-  }
-
-  /// Supply a plaintext alternative instead of generating one from HTML.
-  pub fn text(mut self, text: impl Into<String>) -> Self {
-    self.text = Some(text.into());
-    self
-  }
-
-  /// Render once and freeze the exact envelope and bodies sent to every
-  /// adapter.
-  #[tracing::instrument(skip_all)]
-  pub fn prepare(
-    &self,
-    renderer: &impl Renderer,
-  ) -> Result<PreparedMessage, RenderError> {
-    let body = self
-      .template
-      .render_with_text(renderer, self.text.as_deref())?;
-    Ok(PreparedMessage::new(self.envelope.clone(), body))
-  }
-}
-impl std::fmt::Debug for Message {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.write_str("Message([redacted])")
   }
 }
 

@@ -7,5 +7,5 @@ pub mod writer;
 
 pub use error::{RenderError, RenderErrorKind};
 pub use pipeline::{EmptyBody, Rendered};
-pub use port::Renderer;
+pub use port::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody, Renderer};
 pub use writer::{ElementWriter, MjmlWriter};

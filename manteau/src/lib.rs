@@ -1,5 +1,11 @@
 //! Typed email templates and independently selectable transports.
 //! See the crate README for installation and the complete sending example.
+mod mailer;
+pub mod message;
+
+pub use mailer::{Mailer, MailerError};
+pub use message::Message;
+
 pub use manteau_core::*;
 pub use manteau_macros::mjml;
 #[cfg(feature = "render-mrml")]
@@ -8,7 +14,7 @@ pub use manteau_render::{InvalidTextWidth, MrmlError, MrmlRenderer};
 pub mod prelude {
   pub use manteau_core::prelude::*;
 
-  pub use crate::mjml;
+  pub use crate::{Mailer, Message, mjml};
 }
 #[cfg(feature = "cloudflare")]
 pub use manteau_cloudflare::{

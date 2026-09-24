@@ -10,7 +10,7 @@ pub mod transport;
 pub use idempotency::*;
 pub use message::*;
 pub use models::*;
-pub use render::{RenderError, RenderErrorKind, Rendered, Renderer};
+pub use render::{HtmlBody, InvalidHtmlBody, InvalidPlaintextBody, MjmlDocument, PlaintextBody, RenderError, RenderErrorKind, Rendered, Renderer};
 pub use transport::*;
 
 pub mod http;

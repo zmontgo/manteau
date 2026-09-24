@@ -3,24 +3,18 @@ use crate::{
   templating::{body::Body, element::Element},
 };
 
-/// The top-level MJML document — `<mjml>` wrapping an optional `<mj-head>`
-/// (`title`, `preview_text`) and a required [`Body`].
-///
-/// This is what [`Message::content`] holds. Renaming from the older `Email`
-/// keeps the vocabulary honest: an [`Message`] is an email; a `Template` is
-/// the renderable body the message carries.
-///
-/// [`Message`]: crate::message::Message
-/// [`Message::content`]: crate::message::Message
-#[non_exhaustive]
+/// A typed MJML document with a required body and optional head content.
+/// Its fields are private so document construction stays under this type's
+/// contract as rendering features are added.
 #[derive(Debug, Clone)]
 pub struct Template {
-  pub body:         Body,
-  pub preview_text: Option<String>,
-  pub title:        Option<String>,
+  body:         Body,
+  preview_text: Option<String>,
+  title:        Option<String>,
 }
 
 impl Template {
+  /// Wrap an already structured MJML body in a complete document.
   pub fn new(body: Body) -> Self {
     Self {
       body,

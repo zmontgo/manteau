@@ -38,8 +38,11 @@ manteau-cloudflare = { workspace = true, optional = true }
 manteau-jetemail = { workspace = true, optional = true }
 manteau-mock = { workspace = true, optional = true }
 manteau-stdout = { workspace = true, optional = true }
+thiserror.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
+async-trait.workspace = true
 tracing.workspace = true
 manteau-mock.workspace = true
 tokio.workspace = true
