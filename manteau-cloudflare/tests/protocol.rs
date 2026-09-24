@@ -11,9 +11,8 @@
 
 use std::time::Duration;
 
-use manteau::{
-  CloudflareErrorKind, CloudflareTransport, Message, Transport, prelude::*,
-};
+use manteau_cloudflare::{CloudflareErrorKind, CloudflareTransport};
+use manteau_core::{Message, Transport, prelude::*};
 use wiremock::{
   Mock, MockServer, ResponseTemplate,
   matchers::{body_partial_json, header, method, path},
@@ -22,17 +21,21 @@ use wiremock::{
 const ACCOUNT_ID: &str = "test-account";
 const SEND_PATH: &str = "/client/v4/accounts/test-account/email/sending/send";
 
-fn make_message() -> Message {
+fn make_message() -> PreparedMessage {
   let template = Template::new(
     Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
   );
 
   Message::new(
-    Address::new("from@example.com".parse().unwrap()),
-    vec![Address::new("to@example.com".parse().unwrap())],
-    "Hello",
+    Envelope::new(
+      Address::new("from@example.com".parse().unwrap()),
+      Recipients::to(Address::new("to@example.com".parse().unwrap())),
+      HeaderText::new("Hello").unwrap(),
+    ),
     template,
   )
+  .prepare()
+  .unwrap()
 }
 
 fn transport(server_uri: &str) -> CloudflareTransport {
@@ -111,11 +114,15 @@ async fn non_ascii_subject_is_rfc2047_encoded_on_the_wire() {
     Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
   );
   let msg = Message::new(
-    Address::new("from@example.com".parse().unwrap()),
-    vec![Address::new("to@example.com".parse().unwrap())],
-    "Welcome — test",
+    Envelope::new(
+      Address::new("from@example.com".parse().unwrap()),
+      Recipients::to(Address::new("to@example.com".parse().unwrap())),
+      HeaderText::new("Welcome — test").unwrap(),
+    ),
     template,
-  );
+  )
+  .prepare()
+  .unwrap();
 
   transport(&server.uri()).send(&msg).await.unwrap();
 }

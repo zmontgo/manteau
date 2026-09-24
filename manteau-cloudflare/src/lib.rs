@@ -9,20 +9,19 @@
 //!
 //! Errors flow through [`CloudflareError`] — manteau's standard kind + source
 //! shape — and implement [`TransportFailure`] so retry middleware classifies
-//! failures by category. See the [`manteau_core::transport`] module docs for the
-//! error pattern.
+//! failures by category. See the [`manteau_core::transport`] module docs for
+//! the error pattern.
 
 use std::{borrow::Cow, time::Duration};
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-
 use manteau_core::{
-  message::Message,
+  message::PreparedMessage,
   models::{Address, MessageId},
   templating::attributes::urls::Url,
   transport::{Receipt, Transport, TransportFailure},
 };
+use serde::{Deserialize, Serialize};
 
 /// Tunable defaults for [`CloudflareTransport`]. Construct via
 /// [`CloudflareConfig::new`] and chain setters to override individual fields.
@@ -167,9 +166,10 @@ impl Receipt for CloudflareReceipt {
 /// Error returned by [`CloudflareTransport::send`].
 ///
 /// Follows manteau's standard kind + source pattern (see the
-/// [`manteau_core::transport`] module docs). Branch on [`CloudflareError::kind`] for
-/// programmatic decisions; `Display` carries the upstream's message; the
-/// original error is preserved in the `#[source]` chain for downcasting.
+/// [`manteau_core::transport`] module docs). Branch on
+/// [`CloudflareError::kind`] for programmatic decisions; `Display` carries the
+/// upstream's message; the original error is preserved in the `#[source]` chain
+/// for downcasting.
 #[derive(Debug, thiserror::Error)]
 #[error("{source}")]
 pub struct CloudflareError {
@@ -289,6 +289,16 @@ impl CloudflareErrorKind {
 }
 
 impl TransportFailure for CloudflareError {
+  fn acceptance(&self) -> manteau_core::Acceptance {
+    match self.kind {
+      CloudflareErrorKind::Network
+      | CloudflareErrorKind::Decode
+      | CloudflareErrorKind::Server { .. } => manteau_core::Acceptance::Unknown,
+      CloudflareErrorKind::Bounced => manteau_core::Acceptance::Partial,
+      _ => manteau_core::Acceptance::NotAccepted,
+    }
+  }
+
   /// Retry-worthy failures: network blips, rate limits, and provider 5xx.
   /// Everything else is either caller-actionable or a bug.
   fn is_transient(&self) -> bool {
@@ -480,10 +490,10 @@ struct AddrObj<'a> {
 impl<'a> From<&'a Address> for AddrObj<'a> {
   fn from(a: &'a Address) -> Self {
     AddrObj {
-      address: a.email.as_str(),
+      address: a.email().as_str(),
       // The display name is an RFC 5322 phrase — same header-encoding rule
       // as the subject.
-      name:    a.name.as_deref().map(encode_header_word),
+      name:    a.display_name().map(encode_header_word),
     }
   }
 }
@@ -535,20 +545,36 @@ impl Transport for CloudflareTransport {
   #[tracing::instrument(skip_all, fields(base_url = %self.base_url.as_str()))]
   async fn send(
     &self,
-    message: &Message,
+    message: &PreparedMessage,
   ) -> Result<CloudflareReceipt, CloudflareError> {
-    let rendered = message
-      .render()
-      .map_err(|e| CloudflareErrorKind::Render.err(e))?;
+    let rendered = message.body();
 
     let payload = Payload {
-      from:    (&message.from).into(),
-      to:      message.to.iter().map(|a| a.email.as_str()).collect(),
-      cc:      message.cc.iter().map(|a| a.email.as_str()).collect(),
-      bcc:     message.bcc.iter().map(|a| a.email.as_str()).collect(),
-      subject: encode_header_word(&message.subject),
-      html:    &rendered.html,
-      text:    &rendered.text,
+      from:    message.envelope().from().into(),
+      to:      message
+        .envelope()
+        .recipients()
+        .to_addresses()
+        .iter()
+        .map(|a| a.email().as_str())
+        .collect(),
+      cc:      message
+        .envelope()
+        .recipients()
+        .cc_addresses()
+        .iter()
+        .map(|a| a.email().as_str())
+        .collect(),
+      bcc:     message
+        .envelope()
+        .recipients()
+        .bcc_addresses()
+        .iter()
+        .map(|a| a.email().as_str())
+        .collect(),
+      subject: encode_header_word(message.envelope().subject()),
+      html:    rendered.html(),
+      text:    rendered.text(),
     };
 
     let url = format!(

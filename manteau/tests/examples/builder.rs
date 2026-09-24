@@ -17,10 +17,11 @@
 //! cargo run --example builder
 //! ```
 
-use manteau::{Message, MockTransport, Transport, prelude::*};
+use manteau::{Message, Transport, prelude::*};
+use manteau_mock::MockTransport;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn builder() -> Result<(), Box<dyn std::error::Error>> {
   let temp_password = "u8X-7tWq-12pL";
   let invited_by = "Alice";
   let login_url = Url::try_parse("https://example.com/login")?;
@@ -108,11 +109,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let template = Template::new(body);
 
   let msg = Message::new(
-    Address::new("noreply@example.com".parse()?),
-    vec![Address::new("you@example.com".parse()?)],
-    "Welcome to Example Travel",
+    Envelope::new(
+      Address::new("noreply@example.com".parse()?),
+      Recipients::to(Address::new("you@example.com".parse()?)),
+      HeaderText::new("Welcome to Example Travel")?,
+    ),
     template,
-  );
+  )
+  .prepare()?;
 
   let transport = MockTransport::new();
   transport.send(&msg).await?;

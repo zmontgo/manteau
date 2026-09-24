@@ -893,6 +893,7 @@ dependencies = [
  "manteau-stdout",
  "serde_json",
  "tokio",
+ "tracing",
  "tracing-subscriber",
 ]
 

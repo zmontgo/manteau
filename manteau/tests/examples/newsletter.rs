@@ -10,7 +10,8 @@
 //! cargo run --example newsletter
 //! ```
 
-use manteau::{Message, MockTransport, Transport, prelude::*};
+use manteau::{Message, Transport, prelude::*};
+use manteau_mock::MockTransport;
 
 #[derive(Clone)]
 struct Article {
@@ -26,8 +27,8 @@ enum Category {
   Tip,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn newsletter() -> Result<(), Box<dyn std::error::Error>> {
   let articles = vec![
     Article {
       title:    "Visa updates for European travel",
@@ -125,20 +126,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   });
 
   let msg = Message::new(
-    Address::new("newsletter@example.com".parse()?),
-    vec![Address::new("you@example.com".parse()?)],
-    "Your monthly travel newsletter",
+    Envelope::new(
+      Address::new("newsletter@example.com".parse()?),
+      Recipients::to(Address::new("you@example.com".parse()?)),
+      HeaderText::new("Your monthly travel newsletter")?,
+    ),
     template,
-  );
+  )
+  .prepare()?;
 
   // MockTransport is always available — no feature flag needed.
   let transport = MockTransport::new();
   transport.send(&msg).await?;
   let sent = transport.sent();
   println!("Captured {} message(s).", sent.len());
-  let rendered = sent[0].render()?;
+  let rendered = sent[0].body();
   println!("\n─── rendered HTML ────────────────────────────────────────");
-  let preview: String = rendered.html.chars().take(800).collect();
+  let preview: String = rendered.html().chars().take(800).collect();
   println!("{}…", preview);
 
   Ok(())

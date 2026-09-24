@@ -37,6 +37,7 @@ manteau-mock = { workspace = true, optional = true }
 manteau-stdout = { workspace = true, optional = true }
 
 [dev-dependencies]
+tracing.workspace = true
 manteau-mock.workspace = true
 tokio.workspace = true
 tracing-subscriber = "0.3"

@@ -4,25 +4,30 @@
 //! Gated via `required-features = ["mailjet"]` in `Cargo.toml`, so this
 //! whole test binary is skipped without the feature.
 
-use manteau::{
-  MailjetTransport, Message, Transport, prelude::*, transport::TransportFailure,
+use manteau_core::{
+  Message, Transport, prelude::*, transport::TransportFailure,
 };
+use manteau_mailjet::MailjetTransport;
 use wiremock::{
   Mock, MockServer, ResponseTemplate,
   matchers::{body_partial_json, header, method, path},
 };
 
-fn make_message() -> Message {
+fn make_message() -> PreparedMessage {
   let template = Template::new(
     Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
   );
 
   Message::new(
-    Address::new("from@example.com".parse().unwrap()),
-    vec![Address::new("to@example.com".parse().unwrap())],
-    "Hello",
+    Envelope::new(
+      Address::new("from@example.com".parse().unwrap()),
+      Recipients::to(Address::new("to@example.com".parse().unwrap())),
+      HeaderText::new("Hello").unwrap(),
+    ),
     template,
   )
+  .prepare()
+  .unwrap()
 }
 
 fn transport(server_uri: &str) -> MailjetTransport {

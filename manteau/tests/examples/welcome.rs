@@ -10,10 +10,11 @@
 //! cargo run --example welcome --features stdout
 //! ```
 
-use manteau::{Message, StdoutTransport, Transport, prelude::*};
+use manteau::{Message, Transport, prelude::*};
+use manteau_mock::MockTransport;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn welcome() -> Result<(), Box<dyn std::error::Error>> {
   let temp_password = "u8X-7tWq-12pL";
   let invited_by = "Alice";
   let login_url = Url::try_parse("https://example.com/login")?;
@@ -97,15 +98,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   });
 
   let msg = Message::new(
-    Address::new("noreply@example.com".parse()?),
-    vec![Address::new("you@example.com".parse()?)],
-    "Welcome to Example Travel",
+    Envelope::new(
+      Address::new("noreply@example.com".parse()?),
+      Recipients::to(Address::new("you@example.com".parse()?)),
+      HeaderText::new("Welcome to Example Travel")?,
+    ),
     template,
-  );
+  )
+  .prepare()?;
 
-  let transport = StdoutTransport::new();
+  let transport = MockTransport::new();
   let receipt = transport.send(&msg).await?;
-  println!("\nSent. Message IDs: {:?}", receipt.ids);
+  println!("\nSent. Message IDs: {:?}", receipt.ids());
 
   Ok(())
 }

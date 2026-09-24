@@ -1,96 +1,94 @@
-//! Stdout transport — prints the envelope and a preview (or full) HTML body
-//! to stdout. For local development and CLI tools.
-
-use std::sync::atomic::{AtomicU64, Ordering};
+//! Explicit local inspection of private mail through standard output.
+//! This adapter prints recipients (including Bcc), subjects, and bodies. Use it
+//! only where stdout is an appropriate destination for that information.
+use std::io::Write;
 
 use async_trait::async_trait;
-
 use manteau_core::{
-  message::Message,
-  models::{Address, MessageId},
-  render::RenderError,
-  transport::{Receipt, Transport},
+  Acceptance, MessageId, PreparedMessage, Receipt, Transport, TransportFailure,
 };
-
-/// Transport that prints the envelope and (optionally) the rendered HTML
-/// body to stdout. For local development and CLI tools.
-///
-/// Switch from the default 280-character HTML preview to the full body
-/// with [`StdoutTransport::verbose`].
+/// A local printer. It never sends email to a provider.
 #[derive(Debug, Clone, Default)]
 pub struct StdoutTransport {
   verbose: bool,
 }
-
-/// Acknowledgement returned by [`StdoutTransport::send`]. The single ID
-/// is a process-monotonic counter (`stdout-0`, `stdout-1`, …) —
-/// deterministic within a single process.
-#[non_exhaustive]
-#[derive(Debug, Clone)]
-pub struct StdoutReceipt {
-  pub ids: Vec<MessageId>,
-}
-
-impl Receipt for StdoutReceipt {
-  fn ids(&self) -> &[MessageId] { &self.ids }
-}
-
 impl StdoutTransport {
+  /// Print headers and a 280-character HTML preview (plaintext when HTML is
+  /// absent).
   pub fn new() -> Self { Self::default() }
 
-  /// When true, prints the full rendered HTML. Default false (preview only).
+  /// Print both complete body alternatives instead of a preview.
   pub fn verbose(mut self, verbose: bool) -> Self {
     self.verbose = verbose;
     self
   }
 }
+/// Successful local output, not delivery evidence. Contains no provider IDs.
+#[derive(Debug)]
+pub struct StdoutReceipt;
+impl Receipt for StdoutReceipt {
+  fn ids(&self) -> &[MessageId] { &[] }
+}
+/// Stdout failed, potentially after writing part of the message.
+#[derive(Debug, thiserror::Error)]
+#[error("could not write email to stdout")]
+pub struct StdoutError(#[source] std::io::Error);
+impl TransportFailure for StdoutError {
+  fn is_transient(&self) -> bool { false }
 
-static STDOUT_COUNTER: AtomicU64 = AtomicU64::new(0);
+  fn is_auth(&self) -> bool { false }
 
+  fn is_message_rejected(&self) -> bool { false }
+
+  fn acceptance(&self) -> Acceptance { Acceptance::Unknown }
+}
 #[async_trait]
 impl Transport for StdoutTransport {
-  type Error = RenderError;
+  type Error = StdoutError;
   type Receipt = StdoutReceipt;
 
-  #[tracing::instrument(skip_all, fields(subject = %message.subject))]
   async fn send(
     &self,
-    message: &Message,
-  ) -> Result<Self::Receipt, Self::Error> {
-    let rendered = message.render()?;
-
-    println!("─── manteau: outgoing message ─────────────────────────────");
-    println!("From:    {}", format_address(&message.from));
-    for to in &message.to {
-      println!("To:      {}", format_address(to));
+    message: &PreparedMessage,
+  ) -> Result<StdoutReceipt, StdoutError> {
+    let mut out = std::io::stdout().lock();
+    let envelope = message.envelope();
+    writeln!(out, "From: {}", envelope.from().mailbox())
+      .map_err(StdoutError)?;
+    for (label, addresses) in [
+      ("To", envelope.recipients().to_addresses()),
+      ("Cc", envelope.recipients().cc_addresses()),
+      ("Bcc", envelope.recipients().bcc_addresses()),
+    ] {
+      for address in addresses {
+        writeln!(out, "{label}: {}", address.mailbox()).map_err(StdoutError)?;
+      }
     }
-    for cc in &message.cc {
-      println!("Cc:      {}", format_address(cc));
-    }
-    for bcc in &message.bcc {
-      println!("Bcc:     {}", format_address(bcc));
-    }
-    println!("Subject: {}", message.subject);
-    println!("───────────────────────────────────────────────────────────");
+    writeln!(out, "Subject: {}", envelope.subject()).map_err(StdoutError)?;
     if self.verbose {
-      println!("{}", rendered.html);
+      writeln!(
+        out,
+        "\n{}\n\n{}",
+        message.body().html(),
+        message.body().text()
+      )
+      .map_err(StdoutError)?;
     } else {
-      let preview: String = rendered.html.chars().take(280).collect();
-      let ellipsis = if rendered.html.len() > 280 { "…" } else { "" };
-      println!("{preview}{ellipsis}");
+      let body = if message.body().html().is_empty() {
+        message.body().text()
+      } else {
+        message.body().html()
+      };
+      let mut chars = body.chars();
+      let preview: String = chars.by_ref().take(280).collect();
+      writeln!(
+        out,
+        "\n{preview}{}",
+        if chars.next().is_some() { "…" } else { "" }
+      )
+      .map_err(StdoutError)?;
     }
-    println!("───────────────────────────────────────────────────────────");
-
-    let n = STDOUT_COUNTER.fetch_add(1, Ordering::Relaxed);
-    Ok(StdoutReceipt {
-      ids: vec![MessageId::new(format!("stdout-{n}"))],
-    })
-  }
-}
-
-fn format_address(a: &Address) -> String {
-  match &a.name {
-    Some(name) => format!("{name} <{}>", a.email),
-    None => a.email.to_string(),
+    out.flush().map_err(StdoutError)?;
+    Ok(StdoutReceipt)
   }
 }

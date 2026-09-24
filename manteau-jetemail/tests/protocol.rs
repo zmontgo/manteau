@@ -1,9 +1,8 @@
-#![cfg(feature = "jetemail")]
-use manteau::{
-  Address, IdempotencyKey, IdempotentTransport, JetEmailConfig,
-  JetEmailErrorKind, JetEmailTransport, PreparedMessage, Receipt,
-  TransportFailure,
+use manteau_core::{
+  Address, Envelope, HeaderText, IdempotencyKey, IdempotentTransport,
+  PreparedMessage, Receipt, Recipients, Rendered, TransportFailure,
 };
+use manteau_jetemail::{JetEmailConfig, JetEmailErrorKind, JetEmailTransport};
 use wiremock::{
   Mock, MockServer, ResponseTemplate,
   matchers::{header, method, path},
@@ -13,13 +12,14 @@ struct Fixture;
 impl Fixture {
   fn message() -> PreparedMessage {
     PreparedMessage::new(
-      Address::new("from@example.com".parse().unwrap()).name("Sender"),
-      vec![Address::new("to@example.com".parse().unwrap())],
-      "Hello".into(),
-      "<p>Private</p>".into(),
-      "Private".into(),
+      Envelope::new(
+        Address::new("from@example.com".parse().unwrap())
+          .name(HeaderText::new("Sender").unwrap()),
+        Recipients::to(Address::new("to@example.com".parse().unwrap())),
+        HeaderText::new("Hello").unwrap(),
+      ),
+      Rendered::new("<p>Private</p>", "Private").unwrap(),
     )
-    .unwrap()
   }
 
   fn transport(server: &MockServer) -> JetEmailTransport {
@@ -143,7 +143,11 @@ fn deserialization_preserves_input_contracts() {
     ("subject", serde_json::json!("x\nBcc: y")),
   ] {
     let mut content = serde_json::to_value(Fixture::message()).unwrap();
-    content[field] = value;
+    match field {
+      "from" => content["envelope"]["from"]["email"] = value,
+      "to" => content["envelope"]["recipients"]["to"] = value,
+      _ => content["envelope"][field] = value,
+    }
     assert!(serde_json::from_value::<PreparedMessage>(content).is_err());
   }
 }

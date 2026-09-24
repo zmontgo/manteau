@@ -8,14 +8,13 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use serde::Serialize;
-
 use manteau_core::{
-  message::Message,
+  message::PreparedMessage,
   models::{Address, MessageId},
   templating::attributes::urls::Url,
   transport::{Receipt, Transport, TransportFailure},
 };
+use serde::Serialize;
 
 /// Tunable defaults for [`MailjetTransport`]. Construct via
 /// [`MailjetConfig::new`] and chain setters to override individual fields.
@@ -147,8 +146,8 @@ impl Receipt for MailjetReceipt {
 /// Error returned by [`MailjetTransport::send`].
 ///
 /// Follows manteau's standard kind + source pattern (see the
-/// [`manteau_core::transport`] module docs). Branch on [`MailjetError::kind`] for
-/// programmatic decisions; `Display` carries the upstream's message to
+/// [`manteau_core::transport`] module docs). Branch on [`MailjetError::kind`]
+/// for programmatic decisions; `Display` carries the upstream's message to
 /// operator logs; the original `reqwest::Error` / `serde_json::Error` is
 /// preserved in the `#[source]` chain for downcasting.
 #[derive(Debug, thiserror::Error)]
@@ -217,6 +216,17 @@ impl MailjetErrorKind {
 }
 
 impl TransportFailure for MailjetError {
+  fn acceptance(&self) -> manteau_core::Acceptance {
+    match self.kind {
+      MailjetErrorKind::Network
+      | MailjetErrorKind::Decode
+      | MailjetErrorKind::Provider { status: 500..=599 } => {
+        manteau_core::Acceptance::Unknown
+      }
+      _ => manteau_core::Acceptance::NotAccepted,
+    }
+  }
+
   fn is_transient(&self) -> bool {
     match &self.kind {
       MailjetErrorKind::Network => true,
@@ -286,8 +296,8 @@ struct AddrRef<'a> {
 impl<'a> From<&'a Address> for AddrRef<'a> {
   fn from(a: &'a Address) -> Self {
     AddrRef {
-      email: a.email.as_str(),
-      name:  a.name.as_deref(),
+      email: a.email().as_str(),
+      name:  a.display_name(),
     }
   }
 }
@@ -302,21 +312,37 @@ impl Transport for MailjetTransport {
   #[tracing::instrument(skip_all, fields(base_url = %self.base_url.as_str()))]
   async fn send(
     &self,
-    message: &Message,
+    message: &PreparedMessage,
   ) -> Result<MailjetReceipt, MailjetError> {
-    let rendered = message
-      .render()
-      .map_err(|e| MailjetErrorKind::Render.err(e))?;
+    let rendered = message.body();
 
     let payload = Payload {
       messages: vec![MailjetMessage {
-        from:      (&message.from).into(),
-        to:        message.to.iter().map(Into::into).collect(),
-        cc:        message.cc.iter().map(Into::into).collect(),
-        bcc:       message.bcc.iter().map(Into::into).collect(),
-        subject:   &message.subject,
-        text_part: &rendered.text,
-        html_part: &rendered.html,
+        from:      message.envelope().from().into(),
+        to:        message
+          .envelope()
+          .recipients()
+          .to_addresses()
+          .iter()
+          .map(Into::into)
+          .collect(),
+        cc:        message
+          .envelope()
+          .recipients()
+          .cc_addresses()
+          .iter()
+          .map(Into::into)
+          .collect(),
+        bcc:       message
+          .envelope()
+          .recipients()
+          .bcc_addresses()
+          .iter()
+          .map(Into::into)
+          .collect(),
+        subject:   message.envelope().subject(),
+        text_part: rendered.text(),
+        html_part: rendered.html(),
       }],
     };
 

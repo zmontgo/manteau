@@ -60,57 +60,28 @@ impl Visit for FieldVisitor {
   }
 }
 
-fn make_message(subject: &str) -> Message {
-  let template = Template::new(
-    Body::new().push(Section::new().push(Column::new().push(Text::new("Hi")))),
-  );
-
-  Message::new(
-    Address::new("from@example.com".parse().unwrap()),
-    vec![Address::new("to@example.com".parse().unwrap())],
-    subject,
-    template,
-  )
-}
-
 #[test]
-fn message_render_emits_span_with_subject_field() {
+fn preparation_traces_operations_without_private_content() {
   let capture = CapturingLayer::default();
   let subscriber = Registry::default().with(capture.clone());
   let _guard = tracing::subscriber::set_default(subscriber);
-
-  make_message("Quarterly Update").render().unwrap();
-
+  let message = Message::new(
+    Envelope::new(
+      Address::new("private-sender@example.com".parse().unwrap()),
+      Recipients::to(Address::new(
+        "private-recipient@example.com".parse().unwrap(),
+      )),
+      HeaderText::new("Private subject").unwrap(),
+    ),
+    Template::new(Body::new().push(
+      Section::new().push(Column::new().push(Text::new("Private body"))),
+    )),
+  );
+  message.prepare().unwrap();
   let spans = capture.spans.lock().unwrap();
-  let render = spans
-    .iter()
-    .find(|s| s.name == "render")
-    .expect("Message::render should emit a 'render' span");
-  assert!(
-    render.fields.contains("Quarterly Update"),
-    "expected subject field present, got fields: {}",
-    render.fields,
-  );
-}
-
-#[test]
-fn render_pipeline_emits_html_and_plaintext_spans() {
-  let capture = CapturingLayer::default();
-  let subscriber = Registry::default().with(capture.clone());
-  let _guard = tracing::subscriber::set_default(subscriber);
-
-  make_message("anything").render().unwrap();
-
-  let spans = capture.spans.lock().unwrap();
-  let names: Vec<&str> = spans.iter().map(|s| s.name).collect();
-  assert!(
-    names.contains(&"render_html"),
-    "expected render_html span, got {:?}",
-    names,
-  );
-  assert!(
-    names.contains(&"render_plaintext"),
-    "expected render_plaintext span, got {:?}",
-    names,
-  );
+  assert!(spans.iter().any(|span| span.name == "prepare"));
+  for span in spans.iter() {
+    assert!(!span.fields.contains("Private"));
+    assert!(!span.fields.contains("example.com"));
+  }
 }

@@ -16,7 +16,8 @@ use validator::ValidateEmail;
 /// in domain case (`User@Example.com` vs `User@example.com`) compare and hash
 /// equal. The local part is preserved as-is (it is technically case-sensitive
 /// per RFC, even though most providers treat it as case-insensitive).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(try_from = "String")]
 pub struct EmailAddress(String);
 
 /// Failure produced by [`EmailAddress`] parsing.
@@ -24,8 +25,8 @@ pub struct EmailAddress(String);
 /// The failing input is preserved for developer-side debugging via
 /// [`EmailAddressError::input`]. Email addresses are PII — do not surface
 /// this error's `Display` text directly to end users or to public logs.
-#[derive(Debug, thiserror::Error)]
-#[error("invalid email address: {input}")]
+#[derive(thiserror::Error)]
+#[error("invalid email address")]
 pub struct EmailAddressError {
   input: String,
 }
@@ -48,12 +49,12 @@ impl EmailAddress {
   pub fn local_part(&self) -> &str {
     // `validate_email` enforces exactly one `@`, so split_once cannot return
     // None for a successfully constructed EmailAddress.
-    self.0.split_once('@').map(|(l, _)| l).unwrap_or(&self.0)
+    self.0.split_once('@').expect("validated email").0
   }
 
   /// The domain — everything after `@`, lower-cased on construction.
   pub fn domain(&self) -> &str {
-    self.0.split_once('@').map(|(_, d)| d).unwrap_or("")
+    self.0.split_once('@').expect("validated email").1
   }
 }
 
@@ -68,10 +69,8 @@ impl FromStr for EmailAddress {
       });
     }
     // Domain part lower-cased; local part preserved.
-    let normalized = match s.split_once('@') {
-      Some((local, domain)) => format!("{}@{}", local, domain.to_lowercase()),
-      None => s.to_string(), // unreachable: validate_email enforces '@'
-    };
+    let (local, domain) = s.split_once('@').expect("validated email");
+    let normalized = format!("{local}@{}", domain.to_ascii_lowercase());
     Ok(Self(normalized))
   }
 }
@@ -98,27 +97,70 @@ impl AsRef<str> for EmailAddress {
   fn as_ref(&self) -> &str { &self.0 }
 }
 
-/// A `From`/`To`/`Cc`/`Bcc` participant — a validated email plus an optional
-/// display name.
-///
-/// ```
-/// # use manteau_core::Address;
-/// let a = Address::new("hello@example.com".parse()?).name("Hello");
-/// # Ok::<(), manteau_core::EmailAddressError>(())
-/// ```
-#[non_exhaustive]
-#[derive(Debug, Clone)]
-pub struct Address {
-  pub email: EmailAddress,
-  pub name:  Option<String>,
+/// A validated single-line email header value. Empty values are permitted.
+/// Controls (including CR, LF, and tabs) are rejected before serialization.
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(try_from = "String")]
+pub struct HeaderText(String);
+
+/// A header contains a control character. The input is deliberately omitted.
+#[derive(Debug, thiserror::Error)]
+#[error("email headers must not contain control characters")]
+pub struct InvalidHeader;
+impl HeaderText {
+  /// Validate a subject or display name without modifying its text.
+  pub fn new(value: impl Into<String>) -> Result<Self, InvalidHeader> {
+    let value = value.into();
+    if value.chars().any(char::is_control) {
+      return Err(InvalidHeader);
+    }
+    Ok(Self(value))
+  }
+
+  /// Explicit access to potentially private header content.
+  pub fn as_str(&self) -> &str { &self.0 }
+}
+impl TryFrom<String> for HeaderText {
+  type Error = InvalidHeader;
+
+  fn try_from(value: String) -> Result<Self, Self::Error> { Self::new(value) }
 }
 
+/// A mailbox with an optional validated display name.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Address {
+  email: EmailAddress,
+  name:  Option<HeaderText>,
+}
 impl Address {
+  /// Construct an unnamed mailbox from an already validated address.
   pub fn new(email: EmailAddress) -> Self { Self { email, name: None } }
 
-  pub fn name(mut self, name: impl Into<String>) -> Self {
-    self.name = Some(name.into());
+  /// Attach a single-line display name.
+  pub fn name(mut self, name: HeaderText) -> Self {
+    self.name = Some(name);
     self
+  }
+
+  /// The validated mailbox address.
+  pub fn email(&self) -> &EmailAddress { &self.email }
+
+  /// Optional display name; accessing it may expose personal information.
+  pub fn display_name(&self) -> Option<&str> {
+    self.name.as_ref().map(HeaderText::as_str)
+  }
+
+  /// Format a quoted mailbox for providers accepting RFC-style mailbox strings.
+  pub fn mailbox(&self) -> String {
+    match self.display_name() {
+      Some(name) => format!(
+        "\"{}\" <{}>",
+        name.replace('\\', "\\\\").replace('"', "\\\""),
+        self.email
+      ),
+      None => self.email.to_string(),
+    }
   }
 }
 
@@ -146,6 +188,23 @@ impl AsRef<str> for MessageId {
   fn as_ref(&self) -> &str { &self.0 }
 }
 
+impl std::fmt::Debug for EmailAddress {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("EmailAddress([redacted])")
+  }
+}
+
+impl std::fmt::Debug for EmailAddressError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("EmailAddressError([redacted])")
+  }
+}
+
+impl std::fmt::Debug for HeaderText {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("HeaderText([redacted])")
+  }
+}
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -172,9 +231,10 @@ mod tests {
 
   #[test]
   fn address_constructor_and_setter() {
-    let a = Address::new("test@example.com".parse().unwrap()).name("Test");
+    let a = Address::new("test@example.com".parse().unwrap())
+      .name(HeaderText::new("Test").unwrap());
     assert_eq!(a.email.as_str(), "test@example.com");
-    assert_eq!(a.name.as_deref(), Some("Test"));
+    assert_eq!(a.display_name(), Some("Test"));
   }
 
   #[test]

@@ -2,12 +2,11 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use sha2::{Digest, Sha256};
-
 use manteau_core::{
-  IdempotencyKey, IdempotentTransport, Message, MessageId, PreparedMessage,
-  Receipt, Transport, TransportFailure,
+  IdempotencyKey, IdempotentTransport, MessageId, PreparedMessage, Receipt,
+  Transport, TransportFailure,
 };
+use sha2::{Digest, Sha256};
 
 /// Connection policy. Keep the endpoint and account fixed across retries;
 /// JetEmail's key store is region-scoped. Redirects and automatic retries are
@@ -91,7 +90,7 @@ impl JetEmailTransport {
       .client
       .post(self.endpoint.clone())
       .header(reqwest::header::AUTHORIZATION, self.authorization.clone())
-      .json(message);
+      .json(&Payload::from(message));
     if let Some(key) = key {
       request = request.header("Idempotency-Key", key.as_str());
     }
@@ -198,6 +197,15 @@ impl JetEmailError {
   pub fn kind(&self) -> &JetEmailErrorKind { &self.kind }
 }
 impl TransportFailure for JetEmailError {
+  fn acceptance(&self) -> manteau_core::Acceptance {
+    match self.kind {
+      JetEmailErrorKind::Uncertain
+      | JetEmailErrorKind::InFlight
+      | JetEmailErrorKind::Conflict => manteau_core::Acceptance::Unknown,
+      _ => manteau_core::Acceptance::NotAccepted,
+    }
+  }
+
   // Unknown acceptance is deliberately not a generic transient failure.
   fn is_transient(&self) -> bool {
     matches!(
@@ -226,11 +234,9 @@ impl Transport for JetEmailTransport {
 
   async fn send(
     &self,
-    message: &Message,
+    message: &PreparedMessage,
   ) -> Result<Self::Receipt, Self::Error> {
-    let prepared = PreparedMessage::render(message)
-      .map_err(|_| JetEmailErrorKind::Preparation.error())?;
-    self.submit(None, &prepared).await
+    self.submit(None, message).await
   }
 }
 #[async_trait]
@@ -247,5 +253,43 @@ impl IdempotentTransport for JetEmailTransport {
     message: &PreparedMessage,
   ) -> Result<Self::Receipt, Self::Error> {
     self.submit(Some(key), message).await
+  }
+}
+
+#[derive(serde::Serialize)]
+struct Payload<'a> {
+  from:    String,
+  to:      Vec<String>,
+  cc:      Vec<String>,
+  bcc:     Vec<String>,
+  subject: &'a str,
+  html:    &'a str,
+  text:    &'a str,
+}
+impl<'a> From<&'a PreparedMessage> for Payload<'a> {
+  fn from(message: &'a PreparedMessage) -> Self {
+    let envelope = message.envelope();
+    let recipients = envelope.recipients();
+    Self {
+      from:    envelope.from().mailbox(),
+      to:      recipients
+        .to_addresses()
+        .iter()
+        .map(manteau_core::Address::mailbox)
+        .collect(),
+      cc:      recipients
+        .cc_addresses()
+        .iter()
+        .map(manteau_core::Address::mailbox)
+        .collect(),
+      bcc:     recipients
+        .bcc_addresses()
+        .iter()
+        .map(manteau_core::Address::mailbox)
+        .collect(),
+      subject: envelope.subject(),
+      html:    message.body().html(),
+      text:    message.body().text(),
+    }
   }
 }
