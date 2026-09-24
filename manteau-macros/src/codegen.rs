@@ -1,9 +1,8 @@
 //! Codegen for the parsed `mjml!` AST.
 //!
 //! Walks the tree and emits a single block expression that constructs the
-//! corresponding manteau builder. All manteau references are
-//! fully-qualified through `::manteau::prelude` so the macro doesn't depend
-//! on what the caller has in scope.
+//! corresponding builder. The caller's dependency name is resolved at
+//! expansion time, so renamed dependencies work too.
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
@@ -12,9 +11,9 @@ use syn::Ident;
 use crate::{ast::*, values};
 
 /// Top-level entry. The root is always a single element.
-pub fn generate(root: &Node) -> TokenStream {
+pub fn generate(root: &Node, facade: &TokenStream) -> TokenStream {
   match root {
-    Node::Element(el) => gen_element(el),
+    Node::Element(el) => gen_element(el, facade),
     _ => syn::Error::new(Span::call_site(), "mjml! root must be an element")
       .to_compile_error(),
   }
@@ -22,9 +21,9 @@ pub fn generate(root: &Node) -> TokenStream {
 
 /// Generate code for one element. Returns an expression that evaluates to
 /// the element's typed value.
-fn gen_element(el: &Element) -> TokenStream {
+fn gen_element(el: &Element, facade: &TokenStream) -> TokenStream {
   let ty_ident = Ident::new(el.kind.type_name(), el.tag_span);
-  let ty_path = quote_spanned! { el.tag_span => ::manteau::prelude::#ty_ident };
+  let ty_path = quote_spanned! { el.tag_span => #facade::prelude::#ty_ident };
 
   // Split attributes into "required constructor arg" and "setters".
   let (required_attr, setter_attrs) = split_required(el);
@@ -38,7 +37,7 @@ fn gen_element(el: &Element) -> TokenStream {
   let ctor = match (el.kind.body_kind(), required_attr) {
     (BodyKind::Text, Some(attr)) => {
       let content_expr = build_text_content(&el.body, el.tag_span);
-      let attr_val = match gen_attr_value(attr) {
+      let attr_val = match gen_attr_value(attr, el.kind, facade) {
         Ok(v) => v,
         Err(e) => return e.to_compile_error(),
       };
@@ -51,7 +50,7 @@ fn gen_element(el: &Element) -> TokenStream {
       quote_spanned! { el.tag_span => #ty_path::new(#content_expr) }
     }
     (_, Some(attr)) => {
-      let val = match gen_attr_value(attr) {
+      let val = match gen_attr_value(attr, el.kind, facade) {
         Ok(v) => v,
         Err(e) => return e.to_compile_error(),
       };
@@ -61,17 +60,19 @@ fn gen_element(el: &Element) -> TokenStream {
   };
 
   // Chain setter calls.
-  let setter_calls =
-    setter_attrs.iter().map(|attr| match gen_setter_call(attr) {
+  let setter_calls = setter_attrs.iter().map(|attr| {
+    match gen_setter_call(attr, el.kind, facade) {
       Ok(ts) => ts,
       Err(e) => e.to_compile_error(),
-    });
+    }
+  });
 
   // Build children. Text-bodied elements have already consumed their body.
   let body_stmts: Vec<TokenStream> = match &el.body {
-    ElementBody::Container(nodes) => {
-      nodes.iter().map(gen_container_node).collect()
-    }
+    ElementBody::Container(nodes) => nodes
+      .iter()
+      .map(|node| gen_container_node(node, facade))
+      .collect(),
     ElementBody::Text(_) | ElementBody::Empty => Vec::new(),
   };
 
@@ -113,24 +114,58 @@ fn split_required(el: &Element) -> (Option<&Attr>, Vec<&Attr>) {
 }
 
 /// Emit the call `.snake_name(value)` for one attribute.
-fn gen_setter_call(attr: &Attr) -> syn::Result<TokenStream> {
+fn gen_setter_call(
+  attr: &Attr,
+  kind: TagKind,
+  facade: &TokenStream,
+) -> syn::Result<TokenStream> {
   let method = Ident::new(&kebab_to_snake(&attr.name), attr.name_span);
-  let val = gen_attr_value(attr)?;
+  let val = gen_attr_value(attr, kind, facade)?;
   Ok(quote_spanned! { attr.name_span =>
     .#method(#val)
   })
 }
 
-fn gen_attr_value(attr: &Attr) -> syn::Result<TokenStream> {
+fn gen_attr_value(
+  attr: &Attr,
+  kind: TagKind,
+  facade: &TokenStream,
+) -> syn::Result<TokenStream> {
   match &attr.value {
-    AttrValue::StringLit(lit) if attr.name == "src" => values::parse_image_url(lit),
-    AttrValue::StringLit(lit) if attr.name == "font-family" => values::parse_font_family(lit),
-    AttrValue::StringLit(lit) => values::parse_value(lit),
+    AttrValue::StringLit(lit) if attr.name == "src" => {
+      values::parse_image_url(lit, facade)
+    }
+    AttrValue::StringLit(lit) if attr.name == "font-family" => {
+      values::parse_font_family(lit, facade)
+    }
+    AttrValue::StringLit(lit) if attr.name == "href" => {
+      values::parse_url(lit, facade)
+    }
+    AttrValue::StringLit(lit)
+      if attr.name == "color" || attr.name == "background-color" =>
+    {
+      values::parse_color(lit, facade)
+    }
+    AttrValue::StringLit(lit) if attr.name == "align" => {
+      values::parse_alignment(lit, kind == TagKind::Button, facade)
+    }
+    AttrValue::StringLit(lit) if attr.name == "font-weight" => {
+      values::parse_font_weight(lit, facade)
+    }
+    AttrValue::StringLit(lit) if attr.name == "text-transform" => {
+      values::parse_text_transform(lit, facade)
+    }
+    AttrValue::StringLit(lit) if attr.name == "line-height" => {
+      values::parse_line_height(lit, facade)
+    }
+    AttrValue::StringLit(lit) => values::parse_value(lit, facade),
     AttrValue::Expr(expr) => Ok(quote_spanned! { attr.name_span => #expr }),
   }
 }
 
-fn kebab_to_snake(s: &str) -> String { s.replace('-', "_") }
+fn kebab_to_snake(s: &str) -> String {
+  s.replace('-', "_")
+}
 
 /// Whether we're generating statements that introduce a new `__el` binding
 /// each time (`let __el = ...`) or that reassign an existing mutable `__el`
@@ -155,23 +190,27 @@ fn rebind(ctx: RebindCtx, span: Span, value: TokenStream) -> TokenStream {
 }
 
 /// Generate a rebind statement for one container-body node.
-fn gen_container_node(node: &Node) -> TokenStream {
-  gen_container_node_ctx(node, RebindCtx::Let)
+fn gen_container_node(node: &Node, facade: &TokenStream) -> TokenStream {
+  gen_container_node_ctx(node, RebindCtx::Let, facade)
 }
 
-fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
+fn gen_container_node_ctx(
+  node: &Node,
+  ctx: RebindCtx,
+  facade: &TokenStream,
+) -> TokenStream {
   match node {
     Node::Element(child) => {
-      let child_expr = gen_element(child);
+      let child_expr = gen_element(child, facade);
       let span = child.tag_span;
       rebind(ctx, span, quote_spanned! { span =>
-        ::manteau::prelude::Push::push(__el, #child_expr)
+        #facade::prelude::Push::push(__el, #child_expr)
       })
     }
     Node::Interp(expr) | Node::Raw(expr) => {
       let span = expr_span(expr);
       rebind(ctx, span, quote_spanned! { span =>
-        ::manteau::prelude::Push::push(__el, #expr)
+        #facade::prelude::Push::push(__el, #expr)
       })
     }
     Node::If {
@@ -181,12 +220,12 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
     } => {
       let then_stmts = then_branch
         .iter()
-        .map(|n| gen_container_node_ctx(n, RebindCtx::Let));
+        .map(|n| gen_container_node_ctx(n, RebindCtx::Let, facade));
       let else_stmts: Option<Vec<TokenStream>> =
         else_branch.as_ref().map(|nodes| {
           nodes
             .iter()
-            .map(|n| gen_container_node_ctx(n, RebindCtx::Let))
+            .map(|n| gen_container_node_ctx(n, RebindCtx::Let, facade))
             .collect()
         });
       let else_block = match else_stmts {
@@ -211,7 +250,7 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
     Node::For { pat, iter, body } => {
       let body_stmts = body
         .iter()
-        .map(|n| gen_container_node_ctx(n, RebindCtx::Assign));
+        .map(|n| gen_container_node_ctx(n, RebindCtx::Assign, facade));
       let loop_expr = quote! {
         {
           let mut __el = __el;
@@ -226,7 +265,7 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
     Node::While { cond, body } => {
       let body_stmts = body
         .iter()
-        .map(|n| gen_container_node_ctx(n, RebindCtx::Assign));
+        .map(|n| gen_container_node_ctx(n, RebindCtx::Assign, facade));
       let loop_expr = quote! {
         {
           let mut __el = __el;
@@ -244,7 +283,7 @@ fn gen_container_node_ctx(node: &Node, ctx: RebindCtx) -> TokenStream {
         let stmts = arm
           .body
           .iter()
-          .map(|n| gen_container_node_ctx(n, RebindCtx::Let));
+          .map(|n| gen_container_node_ctx(n, RebindCtx::Let, facade));
         let guard = arm.guard.as_ref().map(|g| quote! { if #g });
         quote! {
           #pat #guard => {
@@ -383,4 +422,6 @@ fn gen_text_part(part: &TextPart, span: Span) -> TokenStream {
   }
 }
 
-fn expr_span(expr: &syn::Expr) -> Span { syn::spanned::Spanned::span(expr) }
+fn expr_span(expr: &syn::Expr) -> Span {
+  syn::spanned::Spanned::span(expr)
+}

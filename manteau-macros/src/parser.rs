@@ -70,7 +70,21 @@ fn parse_element(input: ParseStream) -> Result<Element> {
       self_closing = false;
       break;
     }
-    attrs.push(parse_attr(input)?);
+    let attr = parse_attr(input)?;
+    if attrs
+      .iter()
+      .any(|existing: &Attr| existing.name == attr.name)
+    {
+      return Err(syn::Error::new(
+        attr.name_span,
+        format!(
+          "duplicate `{}` attribute on `<{}>`",
+          attr.name,
+          kind.type_name()
+        ),
+      ));
+    }
+    attrs.push(attr);
   }
 
   // Validate required attributes are present.

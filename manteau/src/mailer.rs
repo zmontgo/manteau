@@ -7,18 +7,24 @@ use crate::Message;
 /// Configured email capability. One-step sends render once and submit once;
 /// durable callers can prepare, persist, then use the underlying transport.
 pub struct Mailer<R, T> {
-  renderer: R,
+  renderer:  R,
   transport: T,
 }
 
 impl<R: Renderer, T: Transport> Mailer<R, T> {
   /// Bind the chosen renderer and delivery mechanism.
   pub fn new(renderer: R, transport: T) -> Self {
-    Self { renderer, transport }
+    Self {
+      renderer,
+      transport,
+    }
   }
 
   /// Prepare immutable content that can be persisted before dispatch.
-  pub fn prepare(&self, message: &Message) -> Result<PreparedMessage, RenderError> {
+  pub fn prepare(
+    &self,
+    message: &Message,
+  ) -> Result<PreparedMessage, RenderError> {
     message.prepare(&self.renderer)
   }
 
@@ -29,9 +35,18 @@ impl<R: Renderer, T: Transport> Mailer<R, T> {
 
   /// Consume authoring intent, render once, and submit once. On failure the
   /// returned value retains the original message or exact prepared content.
-  pub async fn send(&self, message: Message) -> Result<T::Receipt, MailerError<T::Error>> {
-    let prepared = self.prepare(&message).map_err(|error| MailerError::Preparation { message, error })?;
-    self.transport.send(&prepared).await.map_err(|error| MailerError::Submission { prepared, error })
+  pub async fn send(
+    &self,
+    message: Message,
+  ) -> Result<T::Receipt, MailerError<T::Error>> {
+    let prepared = self
+      .prepare(&message)
+      .map_err(|error| MailerError::Preparation { message, error })?;
+    self
+      .transport
+      .send(&prepared)
+      .await
+      .map_err(|error| MailerError::Submission { prepared, error })
   }
 }
 
@@ -40,9 +55,15 @@ impl<R: Renderer, P: manteau_core::HttpProvider>
   Mailer<R, manteau_core::Sender<P, manteau_http::HttpClient>>
 {
   /// Assemble a provider with the standard pooled HTTP driver.
-  pub fn with_http(renderer: R, provider: P) -> Result<Self, manteau_core::http::HttpError> {
+  pub fn with_http(
+    renderer: R,
+    provider: P,
+  ) -> Result<Self, manteau_core::http::HttpError> {
     let http = manteau_http::HttpClient::new()?;
-    Ok(Self::new(renderer, manteau_core::Sender::new(provider, http)))
+    Ok(Self::new(
+      renderer,
+      manteau_core::Sender::new(provider, http),
+    ))
   }
 }
 
@@ -63,7 +84,7 @@ pub enum MailerError<E: manteau_core::TransportFailure> {
     message: Message,
     /// Rendering failure with explicit source access.
     #[source]
-    error: RenderError,
+    error:   RenderError,
   },
 
   /// Submission failed; inspect acceptance evidence before deciding to retry.
@@ -73,7 +94,7 @@ pub enum MailerError<E: manteau_core::TransportFailure> {
     prepared: PreparedMessage,
     /// Transport failure retaining provider evidence.
     #[source]
-    error: E,
+    error:    E,
   },
 }
 

@@ -2,9 +2,7 @@
 //!
 //! These tests live in the consumer-facing `manteau` crate (not in
 //! `manteau-macros`) because that's how a real user encounters the
-//! macro — through `manteau::mjml`. The macro's emitted paths
-//! (`::manteau::prelude::*`) resolve in this binary the same way they
-//! would in any downstream crate.
+//! macro — through `manteau::mjml`. A separate fixture checks renamed imports.
 
 use manteau::{mjml, prelude::*};
 
@@ -58,6 +56,19 @@ impl MacroFixture {
         <Section background-color="#ff0000">
           <Column width="50%">
             <Text color="#abc" font-size="20px">"Styled"</Text>
+          </Column>
+        </Section>
+      </Body>
+    ))
+  }
+
+  fn checked_literals() -> Self {
+    Self(mjml!(
+      <Body background-color="rebeccapurple">
+        <Section>
+          <Column>
+            <Text color="#abcd" align="justify" font-weight="700" line-height="1.5" text-transform="uppercase">"Styled"</Text>
+            <Button href="mailto:hello@example.com" align="center">"Write"</Button>
           </Column>
         </Section>
       </Body>
@@ -327,6 +338,7 @@ fn smoke_all_examples_compile_and_construct() {
   let _ = MacroFixture::text_simple();
   let _ = MacroFixture::text_with_interp();
   let _ = MacroFixture::attrs_string_lit();
+  let _ = MacroFixture::checked_literals();
   let _ = MacroFixture::attrs_expr();
   let _ = MacroFixture::control_flow_if();
   let _ = MacroFixture::control_flow_if_else();
@@ -401,7 +413,7 @@ fn string_lit_attrs_dispatch_typed() {
   let b = MacroFixture::attrs_string_lit();
   assert_eq!(
     b.body().configured_background_color(),
-    Some(&Color::hex(0xff0000).unwrap())
+    Some(&Color::try_parse("#f00").unwrap())
   );
   let s = match &b.body().children()[0] {
     BodyChild::Section(s) => s,
@@ -417,7 +429,10 @@ fn string_lit_attrs_dispatch_typed() {
   );
   match &s.column_items()[0].blocks()[0] {
     Block::Text(t) => {
-      assert_eq!(t.configured_color(), Some(&Color::hex(0xaabbcc).unwrap()));
+      assert_eq!(
+        t.configured_color(),
+        Some(&Color::try_parse("#abc").unwrap())
+      );
       assert_eq!(t.configured_font_size(), Some(Pixels::new(20)));
       assert_eq!(t.content(), "Styled");
     }
@@ -564,7 +579,7 @@ fn wrapper_appears_as_body_child() {
     BodyChild::Wrapper(w) => {
       assert_eq!(
         w.configured_background_color(),
-        Some(&Color::hex(0xffffff).unwrap())
+        Some(&Color::try_parse("#fff").unwrap())
       );
       assert_eq!(w.section_items().len(), 1);
     }

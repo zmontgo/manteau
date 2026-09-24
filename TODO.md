@@ -187,7 +187,7 @@ and submission, without inventing a query-engine-shaped layer.
   - Confirm all non-procedural-macro production source has no bare functions
     and no binary `main` entry points.
 
-- [ ] 9. **Existing macro hygiene and contract parity** — next change.
+- [x] 9. **Existing macro hygiene and contract parity** — `suolnrxn`.
   - `manteau-macros/src/`: resolve renamed consumer dependencies, preserve spans,
     and generate calls to the authoritative checked types. Fix existing literal
     validation drift and ensure no expansion-time accepted input can panic during
@@ -196,6 +196,10 @@ and submission, without inventing a query-engine-shaped layer.
     equivalence, invalid literals/nesting, and useful existing error locations.
   - Broader diagnostics research and complete tag/attribute coverage remain in
     SCRATCHPAD.md; do not incorporate them into this block.
+  - Verified renamed consumer fixture with an independent manifest, macro
+    integration tests, and macro compilation. Attribute-role parsing now uses
+    core's checked color/URL/font contracts and emits typed enum literals;
+    duplicate attributes fail at the duplicate name.
 
 - [ ] 10. **Published-library documentation and examples**.
   - Add `#![deny(missing_docs)]` to every library crate and document each

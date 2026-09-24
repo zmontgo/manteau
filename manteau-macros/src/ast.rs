@@ -44,7 +44,7 @@ impl TagKind {
     }
   }
 
-  /// The Rust type name (used unchanged; the macro emits `::manteau::Foo`).
+  /// The Rust type name under the resolved consumer-facing crate.
   pub fn type_name(self) -> &'static str {
     match self {
       Self::Body => "Body",

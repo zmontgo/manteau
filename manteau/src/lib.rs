@@ -1,15 +1,15 @@
 //! Typed email templates and independently selectable transports.
 //! See the crate README for installation and the complete sending example.
+extern crate self as manteau;
 mod mailer;
 pub mod message;
 
 pub use mailer::{Mailer, MailerError};
-pub use message::Message;
-
 pub use manteau_core::*;
 pub use manteau_macros::mjml;
 #[cfg(feature = "render-mrml")]
 pub use manteau_render::{InvalidTextWidth, MrmlError, MrmlRenderer};
+pub use message::Message;
 /// Common template, envelope, and transport imports.
 pub mod prelude {
   pub use manteau_core::prelude::*;
