@@ -59,3 +59,26 @@ impl<'a> Header<'a> {
     )
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::Header;
+
+  #[test]
+  fn unicode_is_encoded_without_splitting_a_character() {
+    let value = "🦊".repeat(40);
+    let encoded = Header(&value).encode();
+
+    for word in encoded.split(' ') {
+      assert!(word.starts_with("=?UTF-8?Q?"));
+      assert!(word.ends_with("?="));
+      assert!(word.len() <= 75);
+      assert!(word.contains("=F0=9F=A6=8A"));
+    }
+  }
+
+  #[test]
+  fn punctuation_and_spaces_follow_q_encoding() {
+    assert_eq!(Header("é ?_=").encode(), "=?UTF-8?Q?=C3=A9_=3F=5F=3D?=");
+  }
+}

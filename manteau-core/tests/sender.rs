@@ -211,3 +211,24 @@ async fn status_evidence_and_replay_scope_prevent_blind_dispatch() {
   assert!(matches!(error, SendError::Replay(_)));
   assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn expired_persisted_submission_never_dispatches() {
+  let calls = Arc::new(AtomicUsize::new(0));
+  let mail = sender(calls.clone(), 201, true, "token", "test-protocol/1");
+  let submission = Submission::new(
+    IdempotencyKey::try_from("key".to_owned()).unwrap(),
+    message(),
+    &mail,
+  );
+  let mut persisted = serde_json::to_value(&submission).unwrap();
+  persisted["started"] = serde_json::json!({
+    "secs_since_epoch": 0,
+    "nanos_since_epoch": 0
+  });
+  let expired: Submission = serde_json::from_value(persisted).unwrap();
+
+  let error = mail.send_idempotent(&expired).await.unwrap_err();
+  assert!(matches!(error, SendError::Replay(_)));
+  assert_eq!(calls.load(Ordering::SeqCst), 0);
+}

@@ -908,7 +908,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
  "wiremock",
 ]
 
@@ -938,13 +937,6 @@ dependencies = [
  "httpdate",
  "manteau-core",
  "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "url",
- "wiremock",
 ]
 
 [[package]]
@@ -957,7 +949,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
  "wiremock",
 ]
 
@@ -982,7 +973,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
  "wiremock",
 ]
 
@@ -992,10 +982,7 @@ version = "0.2.0"
 dependencies = [
  "async-trait",
  "manteau-core",
- "thiserror 2.0.18",
- "tokio",
  "tracing",
- "wiremock",
 ]
 
 [[package]]
@@ -1005,9 +992,6 @@ dependencies = [
  "async-trait",
  "manteau-core",
  "thiserror 2.0.18",
- "tokio",
- "tracing",
- "wiremock",
 ]
 
 [[package]]

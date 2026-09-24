@@ -20,9 +20,4 @@ all-features = true
 [dependencies]
 manteau-core.workspace = true
 async-trait.workspace = true
-thiserror.workspace = true
 tracing.workspace = true
-
-[dev-dependencies]
-tokio.workspace = true
-wiremock.workspace = true

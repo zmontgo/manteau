@@ -20,11 +20,10 @@ all-features = true
 [dependencies]
 manteau-core.workspace = true
 thiserror.workspace = true
-tracing.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 
 [dev-dependencies]
+serde_json.workspace = true
 manteau-http = { workspace = true, features = ["tls-native"] }
 tokio.workspace = true
 wiremock.workspace = true

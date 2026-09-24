@@ -48,7 +48,7 @@ async fn wire_request_and_real_outcome() {
   let server = MockServer::start().await;
   Mock::given(method("POST")).and(path(PATH))
     .and(header("authorization", "Bearer test-token"))
-    .and(body_partial_json(serde_json::json!({"from":{"address":"from@example.com"},"to":["to@example.com"],"subject":"Hello"})))
+    .and(body_partial_json(serde_json::json!({"from":{"address":"from@example.com"},"to":[{"address":"to@example.com"}],"subject":"Hello"})))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
       "success":true,"result":{"message_id":"provider-1","delivered":["to@example.com"],"queued":[],"permanent_bounces":[],"suppressed_recipients":[]}
     }))).expect(1).mount(&server).await;
@@ -58,6 +58,51 @@ async fn wire_request_and_real_outcome() {
     .unwrap();
   assert_eq!(receipt.ids()[0].as_str(), "provider-1");
   assert_eq!(receipt.delivered()[0].as_str(), "to@example.com");
+  assert!(!format!("{receipt:?}").contains("to@example.com"));
+}
+
+#[tokio::test]
+async fn named_recipients_keep_their_display_names() {
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(body_partial_json(serde_json::json!({
+      "to":[{"address":"to@example.com","name":"Recipient"}]
+    })))
+    .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+      "success":true,"result":{"message_id":"id","delivered":["to@example.com"],"queued":[],"permanent_bounces":[]}
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let named = Address::new("to@example.com".parse().unwrap())
+    .name(HeaderText::new("Recipient").unwrap());
+  let prepared = manteau_core::PreparedMessage::new(
+    Envelope::new(
+      Address::new("from@example.com".parse().unwrap()),
+      Recipients::to(named),
+      HeaderText::new("Hello").unwrap(),
+    ),
+    manteau_core::Rendered::new("<p>Hello</p>", "Hello").unwrap(),
+  );
+  sender(&server).send(&prepared).await.unwrap();
+}
+
+#[tokio::test]
+async fn duplicate_recipients_are_rejected_before_dispatch() {
+  let server = MockServer::start().await;
+  let prepared = manteau_core::PreparedMessage::new(
+    Envelope::new(
+      Address::new("from@example.com".parse().unwrap()),
+      Recipients::to(Address::new("same@example.com".parse().unwrap()))
+        .push_cc(Address::new("same@example.com".parse().unwrap())),
+      HeaderText::new("Hello").unwrap(),
+    ),
+    manteau_core::Rendered::new("<p>Hello</p>", "Hello").unwrap(),
+  );
+  let error = sender(&server).send(&prepared).await.unwrap_err();
+  assert_eq!(error.acceptance(), Acceptance::NotAccepted);
+  assert!(server.received_requests().await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -77,6 +122,30 @@ async fn unicode_subject_and_mixed_outcomes() {
 }
 
 #[tokio::test]
+async fn suppression_is_reported_alongside_accepted_recipients() {
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+      "success":true,
+      "result":{
+        "message_id":"provider-3",
+        "delivered":[],
+        "queued":["to@example.com"],
+        "permanent_bounces":[],
+        "suppressed_recipients":["cc@example.com"]
+      }
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let receipt = sender(&server).send(&message("Hello", true)).await.unwrap();
+  assert_eq!(receipt.ids()[0].as_str(), "provider-3");
+  assert_eq!(receipt.queued()[0].as_str(), "to@example.com");
+  assert_eq!(receipt.suppressed()[0].as_str(), "cc@example.com");
+}
+
+#[tokio::test]
 async fn contradictory_success_is_uncertain() {
   let server = MockServer::start().await;
   Mock::given(method("POST")).respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -90,6 +159,24 @@ async fn contradictory_success_is_uncertain() {
   assert!(
     matches!(error, manteau_core::SendError::Provider(ref source) if source.kind() == CloudflareErrorKind::Response)
   );
+}
+
+#[tokio::test]
+async fn error_flag_with_result_is_uncertain() {
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+      "success":false,"errors":[{"code":10202}],
+      "result":{"message_id":"id","delivered":["to@example.com"],"queued":[],"permanent_bounces":[]}
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+  let error = sender(&server)
+    .send(&message("Hello", false))
+    .await
+    .unwrap_err();
+  assert_eq!(error.acceptance(), Acceptance::Unknown);
 }
 
 #[tokio::test]

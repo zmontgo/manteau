@@ -17,7 +17,7 @@ pub enum MailjetErrorKind {
 #[error("Mailjet protocol failed: {kind:?}")]
 pub struct MailjetError {
   pub(crate) kind:          MailjetErrorKind,
-  pub(crate) provider_code: Option<i64>,
+  pub(crate) provider_code: Option<String>,
   #[source]
   source:                   Option<HttpError>,
 }
@@ -27,9 +27,9 @@ impl MailjetError {
     self.kind
   }
 
-  /// Application error code, when the provider supplied one.
-  pub fn provider_code(&self) -> Option<i64> {
-    self.provider_code
+  /// Standardized Mailjet error code, when the response supplies one.
+  pub fn provider_code(&self) -> Option<&str> {
+    self.provider_code.as_deref()
   }
 
   pub(crate) fn decode(source: HttpError) -> Self {

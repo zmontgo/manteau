@@ -25,15 +25,5 @@ tls-native = ["reqwest/native-tls"]
 [dependencies]
 manteau-core.workspace = true
 async-trait.workspace = true
-thiserror.workspace = true
-tracing.workspace = true
 reqwest.workspace = true
-url.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-
 httpdate = "1"
-
-[dev-dependencies]
-tokio.workspace = true
-wiremock.workspace = true

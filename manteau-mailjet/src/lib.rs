@@ -39,10 +39,17 @@ impl Mailjet {
   }
 }
 /// Provider acceptance for all recipients, not proof of delivery.
-#[derive(Debug)]
 pub struct MailjetReceipt {
   ids:        Vec<MessageId>,
   recipients: Vec<EmailAddress>,
+}
+
+impl std::fmt::Debug for MailjetReceipt {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("MailjetReceipt")
+      .field("recipients", &self.recipients.len())
+      .finish_non_exhaustive()
+  }
 }
 impl MailjetReceipt {
   /// Recipients corresponding to `ids()`, ordered To, Cc, then Bcc.
@@ -99,11 +106,19 @@ struct Response {
 struct Outcome {
   status: String,
   #[serde(default)]
+  errors: Vec<ApiError>,
+  #[serde(default)]
   to:     Vec<Accepted>,
   #[serde(default)]
   cc:     Vec<Accepted>,
   #[serde(default)]
   bcc:    Vec<Accepted>,
+}
+
+#[derive(Deserialize)]
+struct ApiError {
+  #[serde(rename = "ErrorCode")]
+  code: String,
 }
 #[derive(Deserialize)]
 struct Accepted {
@@ -146,7 +161,13 @@ impl Response {
         && outcome.cc.is_empty()
         && outcome.bcc.is_empty()
       {
-        return Err(MailjetErrorKind::Rejected.error());
+        let mut error = MailjetErrorKind::Rejected.error();
+        error.provider_code = outcome
+          .errors
+          .into_iter()
+          .next()
+          .map(|failure| failure.code);
+        return Err(error);
       }
       return Err(MailjetErrorKind::Response.error());
     }
@@ -195,7 +216,7 @@ impl HttpProvider for Mailjet {
   fn status_policy(&self) -> StatusPolicy {
     StatusPolicy {
       handled:      &[200],
-      not_accepted: &[400, 401, 403, 413, 422, 429],
+      not_accepted: &[400, 401, 403],
     }
   }
 

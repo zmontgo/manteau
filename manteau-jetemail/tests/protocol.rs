@@ -55,10 +55,9 @@ async fn replay_preserves_key_and_body() {
   let restored: Submission = serde_json::from_slice(&persisted).unwrap();
 
   for attempt in [&submission, &restored] {
-    assert_eq!(
-      mail.send_idempotent(attempt).await.unwrap().ids()[0].as_str(),
-      "original"
-    );
+    let receipt = mail.send_idempotent(attempt).await.unwrap();
+    assert_eq!(receipt.ids()[0].as_str(), "original");
+    assert!(!format!("{receipt:?}").contains("original"));
   }
 
   let requests = server.received_requests().await.unwrap();
@@ -84,7 +83,7 @@ async fn rejection_and_uncertainty_are_distinct() {
       Acceptance::Unknown,
       Some(JetEmailErrorKind::InFlight),
     ),
-    (429, serde_json::json!({}), Acceptance::NotAccepted, None),
+    (429, serde_json::json!({}), Acceptance::Unknown, None),
     (401, serde_json::json!({}), Acceptance::NotAccepted, None),
     (
       500,

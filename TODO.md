@@ -45,7 +45,7 @@ and submission, without inventing a query-engine-shaped layer.
 
 ## Remaining change blocks
 
-- [x] 3. **Core-owned HTTP submission mechanism and ports** — current change.
+- [x] 3. **Core-owned HTTP submission mechanism and ports** — `yxosryop`.
   - `manteau-core/src/http/` (split current `http.rs` by meaningful owners):
     validated endpoint/configuration, redacted credentials, admitted request,
     bounded response, and the physical `Http` port. No reqwest dependency.
@@ -76,7 +76,7 @@ and submission, without inventing a query-engine-shaped layer.
     constraints and payload-version stability. Do not claim the scope hash alone
     proves either. Reject unsupported replay conditions before dispatch.
 
-- [ ] 4. **Provider-specific implementations and protocol evidence** — next change.
+- [x] 4. **Provider-specific implementations and protocol evidence** — current change.
   - `manteau-jetemail/src/`: a configured JetEmail type implementing core's
     provider ports, its request/response values, documented envelope restrictions,
     queue acceptance and idempotency-conflict interpretation. No header assembly,
@@ -97,7 +97,7 @@ and submission, without inventing a query-engine-shaped layer.
     unintended second physical request. Use official provider documentation;
     mocks verify our implementation, not the external service's guarantees.
 
-- [ ] 5. **Rendering inversion and reusable core operations**.
+- [ ] 5. **Rendering inversion and reusable core operations** — next change.
   - `manteau-core/src/render/`: define the rendering port and output/error
     contracts; retain template-to-MJML generation, escaping, and reusable
     preparation mechanics against ports. No mrml/html2text dependency or

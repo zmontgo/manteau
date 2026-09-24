@@ -1,7 +1,7 @@
 //! Cloudflare protocol implementation for Manteau's core sender.
 //! This crate performs no I/O. Supply a core Http implementation to Sender.
 use manteau_core::{
-  EmailAddress, HttpProvider, MessageId, PreparedMessage, Receipt,
+  Address, EmailAddress, HttpProvider, MessageId, PreparedMessage, Receipt,
   StatusPolicy,
   http::{Credentials, HttpConfig, HttpError, HttpResponse},
 };
@@ -45,13 +45,23 @@ impl Cloudflare {
 /// Complete recipient report from Cloudflare. Success of the HTTP operation
 /// does not imply success for every recipient. IDs are genuine provider
 /// identifiers.
-#[derive(Debug)]
 pub struct CloudflareReceipt {
   ids:               Vec<MessageId>,
   delivered:         Vec<EmailAddress>,
   queued:            Vec<EmailAddress>,
   permanent_bounces: Vec<EmailAddress>,
   suppressed:        Vec<EmailAddress>,
+}
+
+impl std::fmt::Debug for CloudflareReceipt {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("CloudflareReceipt")
+      .field("delivered", &self.delivered.len())
+      .field("queued", &self.queued.len())
+      .field("permanent_bounces", &self.permanent_bounces.len())
+      .field("suppressed", &self.suppressed.len())
+      .finish_non_exhaustive()
+  }
 }
 impl CloudflareReceipt {
   /// Recipients the provider reports as immediately delivered.
@@ -82,19 +92,28 @@ impl Receipt for CloudflareReceipt {
 /// Provider request produced only through checked admission.
 #[derive(Serialize)]
 pub struct Payload<'a> {
-  from:    Sender<'a>,
-  to:      Vec<&'a str>,
-  cc:      Vec<&'a str>,
-  bcc:     Vec<&'a str>,
+  from:    Mailbox<'a>,
+  to:      Vec<Mailbox<'a>>,
+  cc:      Vec<Mailbox<'a>>,
+  bcc:     Vec<Mailbox<'a>>,
   subject: std::borrow::Cow<'a, str>,
   html:    &'a str,
   text:    &'a str,
 }
 #[derive(Serialize)]
-struct Sender<'a> {
+struct Mailbox<'a> {
   address: &'a str,
   #[serde(skip_serializing_if = "Option::is_none")]
   name:    Option<std::borrow::Cow<'a, str>>,
+}
+
+impl<'a> From<&'a Address> for Mailbox<'a> {
+  fn from(address: &'a Address) -> Self {
+    Self {
+      address: address.email().as_str(),
+      name:    address.display_name().map(|name| Header(name).encode()),
+    }
+  }
 }
 #[derive(Deserialize)]
 struct Response {
@@ -122,6 +141,10 @@ impl Response {
     message: &PreparedMessage,
   ) -> Result<CloudflareReceipt, CloudflareError> {
     if !self.success {
+      if self.result.is_some() {
+        return Err(CloudflareErrorKind::Response.error());
+      }
+
       let mut error = CloudflareErrorKind::Rejected.error();
       error.provider_code = self.errors.first().map(|e| e.code);
       return Err(error);
@@ -186,7 +209,7 @@ impl HttpProvider for Cloudflare {
   fn status_policy(&self) -> StatusPolicy {
     StatusPolicy {
       handled:      &[200],
-      not_accepted: &[400, 401, 403, 413, 422, 429],
+      not_accepted: &[401, 403],
     }
   }
 
@@ -196,26 +219,22 @@ impl HttpProvider for Cloudflare {
   ) -> Result<Payload<'a>, Self::Error> {
     let envelope = message.envelope();
     let recipients = envelope.recipients();
+    let mut unique = std::collections::HashSet::new();
+    let count = recipients.iter().count();
+    if envelope.subject().is_empty()
+      || count > 50
+      || !recipients
+        .iter()
+        .all(|address| unique.insert(address.email()))
+    {
+      return Err(CloudflareErrorKind::Input.error());
+    }
+
     Ok(Payload {
-      from:    Sender {
-        address: envelope.from().email().as_str(),
-        name:    envelope.from().display_name().map(|s| Header(s).encode()),
-      },
-      to:      recipients
-        .to_addresses()
-        .iter()
-        .map(|a| a.email().as_str())
-        .collect(),
-      cc:      recipients
-        .cc_addresses()
-        .iter()
-        .map(|a| a.email().as_str())
-        .collect(),
-      bcc:     recipients
-        .bcc_addresses()
-        .iter()
-        .map(|a| a.email().as_str())
-        .collect(),
+      from:    envelope.from().into(),
+      to:      recipients.to_addresses().iter().map(Into::into).collect(),
+      cc:      recipients.cc_addresses().iter().map(Into::into).collect(),
+      bcc:     recipients.bcc_addresses().iter().map(Into::into).collect(),
       subject: Header(envelope.subject()).encode(),
       html:    message.body().html(),
       text:    message.body().text(),

@@ -51,7 +51,7 @@ impl HttpProvider for JetEmail {
   fn status_policy(&self) -> StatusPolicy {
     StatusPolicy {
       handled:      &[201, 409],
-      not_accepted: &[400, 401, 403, 413, 422, 429],
+      not_accepted: &[401, 403],
     }
   }
 
@@ -112,9 +112,14 @@ struct Conflict {
   error: Option<String>,
 }
 /// Acceptance into JetEmail's queue, not proof of delivery.
-#[derive(Debug)]
 pub struct JetEmailReceipt {
   ids: [MessageId; 1],
+}
+
+impl std::fmt::Debug for JetEmailReceipt {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("JetEmailReceipt([redacted])")
+  }
 }
 impl Receipt for JetEmailReceipt {
   fn ids(&self) -> &[MessageId] {
