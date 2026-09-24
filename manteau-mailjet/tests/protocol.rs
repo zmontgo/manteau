@@ -1,23 +1,18 @@
-//! Integration test for `MailjetTransport` against a wiremock-backed fake of
-//! the Mailjet `/v3.1/send` endpoint.
-//!
-//! Gated via `required-features = ["mailjet"]` in `Cargo.toml`, so this
-//! whole test binary is skipped without the feature.
-
 use manteau_core::{
-  Message, Transport, prelude::*, transport::TransportFailure,
+  Acceptance, Address, Envelope, HeaderText, Message, Receipt, Recipients,
+  Sender, Transport, TransportFailure, http::HttpConfig, prelude::*,
 };
-use manteau_mailjet::MailjetTransport;
+use manteau_http::HttpClient;
+use manteau_mailjet::{Mailjet, MailjetErrorKind};
 use wiremock::{
   Mock, MockServer, ResponseTemplate,
   matchers::{body_partial_json, header, method, path},
 };
 
-fn make_message() -> PreparedMessage {
+fn message() -> manteau_core::PreparedMessage {
   let template = Template::new(
     Body::new().push(Section::new().push(Column::new().push(Text::new("Hi!")))),
   );
-
   Message::new(
     Envelope::new(
       Address::new("from@example.com".parse().unwrap()),
@@ -30,119 +25,64 @@ fn make_message() -> PreparedMessage {
   .unwrap()
 }
 
-fn transport(server_uri: &str) -> MailjetTransport {
-  MailjetTransport::new("test-key", "test-secret")
-    .base_url(server_uri.parse().expect("wiremock URL"))
+fn sender(server: &MockServer) -> Sender<Mailjet, HttpClient> {
+  Sender::new(
+    Mailjet::with_config(
+      "test-key",
+      "test-secret",
+      HttpConfig::new(&format!("{}/v3.1/send", server.uri())).unwrap(),
+    )
+    .unwrap(),
+    HttpClient::new().unwrap(),
+  )
 }
 
 #[tokio::test]
-async fn success_returns_message_ids() {
+async fn wire_request_and_real_recipient_id() {
   let server = MockServer::start().await;
-
   Mock::given(method("POST"))
     .and(path("/v3.1/send"))
     .and(header("content-type", "application/json"))
-    .and(body_partial_json(serde_json::json!({
-        "Messages": [{
-            "From": {"Email": "from@example.com"},
-            "Subject": "Hello",
-        }]
-    })))
+    .and(body_partial_json(serde_json::json!({"Messages":[{"From":{"Email":"from@example.com"},"Subject":"Hello"}]})))
     .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-        "Messages": [{
-            "Status": "success",
-            "To": [{
-                "Email": "to@example.com",
-                "MessageID": 18014398509481984u64,
-            }]
-        }]
+      "Messages":[{"Status":"success","To":[{"Email":"to@example.com","MessageID":18014398509481984u64}]}]
     })))
-    .mount(&server)
-    .await;
-
-  let receipt = transport(&server.uri())
-    .send(&make_message())
-    .await
-    .unwrap();
-
-  assert_eq!(receipt.ids.len(), 1);
-  assert_eq!(receipt.ids[0].as_str(), "18014398509481984");
+    .expect(1).mount(&server).await;
+  let receipt = sender(&server).send(&message()).await.unwrap();
+  assert_eq!(receipt.ids()[0].as_str(), "18014398509481984");
+  assert_eq!(receipt.recipients()[0].as_str(), "to@example.com");
 }
 
 #[tokio::test]
-async fn string_message_id_unquoted() {
-  // Edge case: some Mailjet response paths return MessageID as a JSON string
-  // instead of a number. The id must come back without surrounding quotes.
+async fn malformed_success_remains_uncertain() {
   let server = MockServer::start().await;
-  Mock::given(method("POST"))
-    .and(path("/v3.1/send"))
-    .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-        "Messages": [{
-            "To": [{"MessageID": "abc-123"}]
-        }]
-    })))
-    .mount(&server)
-    .await;
-
-  let receipt = transport(&server.uri())
-    .send(&make_message())
-    .await
-    .unwrap();
-  assert_eq!(receipt.ids[0].as_str(), "abc-123");
+  Mock::given(method("POST")).respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+    "Messages":[{"Status":"success","To":[{"Email":"someone-else@example.com","MessageID":"id"}]}]
+  }))).expect(1).mount(&server).await;
+  let error = sender(&server).send(&message()).await.unwrap_err();
+  assert_eq!(error.acceptance(), Acceptance::Unknown);
+  assert!(
+    matches!(error, manteau_core::SendError::Provider(ref source) if source.kind() == MailjetErrorKind::Response)
+  );
 }
 
 #[tokio::test]
-async fn auth_failure_is_classified() {
-  let server = MockServer::start().await;
-  Mock::given(method("POST"))
-    .and(path("/v3.1/send"))
-    .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
-    .mount(&server)
-    .await;
-
-  let err = transport(&server.uri())
-    .send(&make_message())
-    .await
-    .unwrap_err();
-
-  assert!(err.is_auth());
-  assert!(!err.is_transient());
-}
-
-#[tokio::test]
-async fn server_error_is_transient() {
-  let server = MockServer::start().await;
-  Mock::given(method("POST"))
-    .and(path("/v3.1/send"))
-    .respond_with(
-      ResponseTemplate::new(503).set_body_string("Service Unavailable"),
-    )
-    .mount(&server)
-    .await;
-
-  let err = transport(&server.uri())
-    .send(&make_message())
-    .await
-    .unwrap_err();
-
-  assert!(err.is_transient());
-  assert!(!err.is_auth());
-}
-
-#[tokio::test]
-async fn bad_request_is_message_rejected() {
-  let server = MockServer::start().await;
-  Mock::given(method("POST"))
-    .and(path("/v3.1/send"))
-    .respond_with(ResponseTemplate::new(400).set_body_string("Bad Request"))
-    .mount(&server)
-    .await;
-
-  let err = transport(&server.uri())
-    .send(&make_message())
-    .await
-    .unwrap_err();
-
-  assert!(err.is_message_rejected());
-  assert!(!err.is_transient());
+async fn status_classification_keeps_acceptance_separate() {
+  for (status, acceptance, transient) in [
+    (400, Acceptance::NotAccepted, false),
+    (401, Acceptance::NotAccepted, false),
+    (429, Acceptance::NotAccepted, true),
+    (503, Acceptance::Unknown, true),
+  ] {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+      .respond_with(ResponseTemplate::new(status))
+      .expect(1)
+      .mount(&server)
+      .await;
+    let error = sender(&server).send(&message()).await.unwrap_err();
+    assert_eq!(error.acceptance(), acceptance);
+    assert_eq!(error.is_transient(), transient);
+    assert_eq!(error.is_auth(), status == 401);
+  }
 }

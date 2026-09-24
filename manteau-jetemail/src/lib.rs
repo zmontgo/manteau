@@ -1,152 +1,115 @@
-//! JetEmail HTTP sending with provider-enforced idempotency.
+//! JetEmail protocol and idempotency capabilities. This adapter performs no
+//! I/O.
 use std::time::Duration;
 
-use async_trait::async_trait;
 use manteau_core::{
-  IdempotencyKey, IdempotentTransport, MessageId, PreparedMessage, Receipt,
-  Transport, TransportFailure,
+  Acceptance, HttpProvider, IdempotentProvider, MessageId, PreparedMessage,
+  Receipt, StatusPolicy, TransportFailure,
+  http::{Credentials, HttpConfig, HttpError, HttpResponse},
 };
-use sha2::{Digest, Sha256};
 
-/// Connection policy. Keep the endpoint and account fixed across retries;
-/// JetEmail's key store is region-scoped. Redirects and automatic retries are
-/// disabled so a submission cannot silently move to another endpoint.
-pub struct JetEmailConfig {
-  /// Send endpoint, including `/email`.
-  pub endpoint: String,
-  /// Upper bound on one physical HTTP request.
-  pub timeout:  Duration,
+/// Configured JetEmail protocol, with fixed credentials and routing.
+#[derive(Debug)]
+pub struct JetEmail {
+  config:      HttpConfig,
+  credentials: Credentials,
 }
-impl Default for JetEmailConfig {
-  fn default() -> Self {
-    Self {
-      endpoint: "https://api.jetemail.com/email".into(),
-      timeout:  Duration::from_secs(30),
-    }
+impl JetEmail {
+  /// Use the standard transactional send endpoint.
+  pub fn new(token: &str) -> Result<Self, HttpError> {
+    Self::with_config(token, HttpConfig::new("https://api.jetemail.com/email")?)
   }
-}
-/// Authenticated client. Credentials and message contents are never Debug.
-pub struct JetEmailTransport {
-  scope:         String,
-  timeout:       Duration,
-  client:        reqwest::Client,
-  endpoint:      reqwest::Url,
-  authorization: reqwest::header::HeaderValue,
-}
-impl JetEmailTransport {
-  /// Construct a fixed-endpoint client with a transactional API token.
-  pub fn new(
+
+  /// Bind a token to a trusted endpoint and bounded request policy.
+  pub fn with_config(
     token: &str,
-    config: JetEmailConfig,
-  ) -> Result<Self, JetEmailError> {
-    let endpoint = reqwest::Url::parse(&config.endpoint)
-      .map_err(|_| JetEmailErrorKind::Configuration.error())?;
-    if token.is_empty()
-      || !token.bytes().all(|b| b.is_ascii_graphic())
-      || config.timeout.is_zero()
-      || !endpoint.username().is_empty()
-      || endpoint.password().is_some()
-      || endpoint.query().is_some()
-      || endpoint.fragment().is_some()
-      || !(endpoint.scheme() == "https"
-        || (endpoint.scheme() == "http"
-          && matches!(
-            endpoint.host_str(),
-            Some("127.0.0.1" | "[::1]" | "localhost")
-          )))
-    {
-      return Err(JetEmailErrorKind::Configuration.error());
-    }
-    let mut authorization =
-      reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))
-        .map_err(|_| JetEmailErrorKind::Configuration.error())?;
-    authorization.set_sensitive(true);
-    let client = reqwest::Client::builder()
-      .redirect(reqwest::redirect::Policy::none())
-      .retry(reqwest::retry::never())
-      .timeout(config.timeout)
-      .build()
-      .map_err(|_| JetEmailErrorKind::Configuration.error())?;
-    let mut fingerprint = Sha256::new();
-    fingerprint.update(endpoint.as_str().as_bytes());
-    fingerprint.update([0]);
-    fingerprint.update(token.as_bytes());
-    let scope = format!("jetemail:{:x}", fingerprint.finalize());
+    config: HttpConfig,
+  ) -> Result<Self, HttpError> {
     Ok(Self {
-      client,
-      endpoint,
-      authorization,
-      scope,
-      timeout: config.timeout,
+      config,
+      credentials: Credentials::bearer(token)?,
     })
   }
+}
+impl HttpProvider for JetEmail {
+  type Error = JetEmailError;
+  type Payload<'a> = Payload<'a>;
+  type Receipt = JetEmailReceipt;
 
-  async fn submit(
+  fn config(&self) -> &HttpConfig {
+    &self.config
+  }
+
+  fn credentials(&self) -> &Credentials {
+    &self.credentials
+  }
+
+  fn protocol_scope(&self) -> &'static str {
+    concat!("jetemail/", env!("CARGO_PKG_VERSION"))
+  }
+
+  fn status_policy(&self) -> StatusPolicy {
+    StatusPolicy {
+      handled:      &[201, 409],
+      not_accepted: &[400, 401, 403, 413, 422, 429],
+    }
+  }
+
+  fn request<'a>(
+    &'a self,
+    message: &'a PreparedMessage,
+  ) -> Result<Payload<'a>, Self::Error> {
+    if message.envelope().recipients().to_addresses().is_empty()
+      || message.envelope().subject().is_empty()
+    {
+      return Err(JetEmailErrorKind::Input.error());
+    }
+    Ok(Payload::from(message))
+  }
+
+  fn receipt(
     &self,
-    key: Option<&IdempotencyKey>,
-    message: &PreparedMessage,
+    response: HttpResponse,
+    _: &PreparedMessage,
   ) -> Result<JetEmailReceipt, JetEmailError> {
-    let mut request = self
-      .client
-      .post(self.endpoint.clone())
-      .header(reqwest::header::AUTHORIZATION, self.authorization.clone())
-      .json(&Payload::from(message));
-    if let Some(key) = key {
-      request = request.header("Idempotency-Key", key.as_str());
-    }
-    let response = request
-      .send()
-      .await
-      .map_err(|_| JetEmailErrorKind::Uncertain.error())?;
-    let status = response.status().as_u16();
-    let retry_after = response
-      .headers()
-      .get("Retry-After")
-      .and_then(|h| h.to_str().ok())
-      .and_then(|v| v.parse::<u64>().ok())
-      .map(Duration::from_secs);
-    if status != 201 {
-      let kind = match status {
-        401 | 403 => JetEmailErrorKind::Authentication,
-        429 => JetEmailErrorKind::RateLimited,
-        409 => {
-          let body: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|_| JetEmailErrorKind::Uncertain.error())?;
-          match body
-            .get("code")
-            .and_then(|v| v.as_str())
-            .or_else(|| body.get("error").and_then(|v| v.as_str()))
-          {
-            Some("IDEMPOTENCY_IN_FLIGHT") => JetEmailErrorKind::InFlight,
-            Some("IDEMPOTENCY_BODY_MISMATCH") => JetEmailErrorKind::Conflict,
-            _ => JetEmailErrorKind::Uncertain,
-          }
-        }
-        400 | 413 | 422 => JetEmailErrorKind::Rejected,
-        _ => JetEmailErrorKind::Uncertain,
+    if response.status() == 409 {
+      let conflict: Conflict =
+        response.decode().map_err(JetEmailError::decode)?;
+      let kind = match conflict.code.as_deref().or(conflict.error.as_deref()) {
+        Some("IDEMPOTENCY_IN_FLIGHT") => JetEmailErrorKind::InFlight,
+        Some("IDEMPOTENCY_BODY_MISMATCH") => JetEmailErrorKind::Conflict,
+        _ => JetEmailErrorKind::Response,
       };
-      return Err(JetEmailError { kind, retry_after });
+      let mut error = kind.error();
+      error.retry_after = response.retry_after();
+      return Err(error);
     }
-    let accepted: Accepted = response
-      .json()
-      .await
-      .map_err(|_| JetEmailErrorKind::Uncertain.error())?;
+    let accepted: Accepted =
+      response.decode().map_err(JetEmailError::decode)?;
     if accepted.id.is_empty()
       || accepted.id.len() > 998
       || accepted.id.chars().any(char::is_control)
     {
-      return Err(JetEmailErrorKind::Uncertain.error());
+      return Err(JetEmailErrorKind::Response.error());
     }
     Ok(JetEmailReceipt {
       ids: [MessageId::new(accepted.id)],
     })
   }
 }
+impl IdempotentProvider for JetEmail {
+  fn retention(&self) -> Duration {
+    Duration::from_secs(24 * 60 * 60)
+  }
+}
 #[derive(serde::Deserialize)]
 struct Accepted {
   id: String,
+}
+#[derive(serde::Deserialize)]
+struct Conflict {
+  code:  Option<String>,
+  error: Option<String>,
 }
 /// Acceptance into JetEmail's queue, not proof of delivery.
 #[derive(Debug)]
@@ -154,110 +117,92 @@ pub struct JetEmailReceipt {
   ids: [MessageId; 1],
 }
 impl Receipt for JetEmailReceipt {
-  fn ids(&self) -> &[MessageId] { &self.ids }
+  fn ids(&self) -> &[MessageId] {
+    &self.ids
+  }
 }
-
-/// Sanitized failure classification; provider bodies may contain private mail.
-#[derive(Debug, PartialEq, Eq)]
+/// JetEmail-specific input and response failures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JetEmailErrorKind {
-  /// Invalid local client configuration.
-  Configuration,
-  /// Invalid rendered envelope or template.
-  Preparation,
-  /// Credentials or account permissions were rejected.
-  Authentication,
-  /// Provider rate limit; retry only within the idempotency window.
-  RateLimited,
-  /// An identical submission is still being processed.
+  /// JetEmail requires a nonempty To collection and subject.
+  Input,
+  /// A keyed request is still being processed; no new identity is permitted.
   InFlight,
-  /// The key was already used with different content.
+  /// The key already identifies different content. Do not replace it to retry.
   Conflict,
-  /// The provider rejected the request.
-  Rejected,
-  /// Acceptance cannot be ruled out; never retry an unkeyed send.
-  Uncertain,
+  /// Acceptance evidence is malformed or unknown.
+  Response,
+}
+/// Sanitized protocol failure retaining the original decoder error when
+/// relevant.
+#[derive(thiserror::Error)]
+#[error("JetEmail protocol failed: {kind:?}")]
+pub struct JetEmailError {
+  kind:        JetEmailErrorKind,
+  retry_after: Option<Duration>,
+  #[source]
+  source:      Option<HttpError>,
+}
+impl JetEmailError {
+  /// Provider-specific failure source.
+  pub fn kind(&self) -> JetEmailErrorKind {
+    self.kind
+  }
+
+  fn decode(source: HttpError) -> Self {
+    Self {
+      kind:        JetEmailErrorKind::Response,
+      retry_after: None,
+      source:      Some(source),
+    }
+  }
 }
 impl JetEmailErrorKind {
   fn error(self) -> JetEmailError {
     JetEmailError {
       kind:        self,
       retry_after: None,
+      source:      None,
     }
   }
 }
-/// Failure without credentials, recipient addresses, or provider response text.
-#[derive(Debug, thiserror::Error)]
-#[error("JetEmail submission failed: {kind:?}")]
-pub struct JetEmailError {
-  kind:        JetEmailErrorKind,
-  retry_after: Option<Duration>,
-}
-impl JetEmailError {
-  /// Classification used for retry and operator decisions.
-  pub fn kind(&self) -> &JetEmailErrorKind { &self.kind }
+impl std::fmt::Debug for JetEmailError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    std::fmt::Display::fmt(self, f)
+  }
 }
 impl TransportFailure for JetEmailError {
-  fn acceptance(&self) -> manteau_core::Acceptance {
-    match self.kind {
-      JetEmailErrorKind::Uncertain
-      | JetEmailErrorKind::InFlight
-      | JetEmailErrorKind::Conflict => manteau_core::Acceptance::Unknown,
-      _ => manteau_core::Acceptance::NotAccepted,
-    }
-  }
-
-  // Unknown acceptance is deliberately not a generic transient failure.
   fn is_transient(&self) -> bool {
-    matches!(
-      self.kind,
-      JetEmailErrorKind::RateLimited | JetEmailErrorKind::InFlight
-    )
+    self.kind == JetEmailErrorKind::InFlight
   }
 
-  fn is_auth(&self) -> bool { self.kind == JetEmailErrorKind::Authentication }
+  fn is_auth(&self) -> bool {
+    false
+  }
 
   fn is_message_rejected(&self) -> bool {
     matches!(
       self.kind,
-      JetEmailErrorKind::Rejected
-        | JetEmailErrorKind::Conflict
-        | JetEmailErrorKind::Preparation
+      JetEmailErrorKind::Input | JetEmailErrorKind::Conflict
     )
   }
 
-  fn retry_after(&self) -> Option<Duration> { self.retry_after }
-}
-#[async_trait]
-impl Transport for JetEmailTransport {
-  type Error = JetEmailError;
-  type Receipt = JetEmailReceipt;
+  fn acceptance(&self) -> Acceptance {
+    if self.kind == JetEmailErrorKind::Input {
+      Acceptance::NotAccepted
+    } else {
+      Acceptance::Unknown
+    }
+  }
 
-  async fn send(
-    &self,
-    message: &PreparedMessage,
-  ) -> Result<Self::Receipt, Self::Error> {
-    self.submit(None, message).await
+  fn retry_after(&self) -> Option<Duration> {
+    self.retry_after
   }
 }
-#[async_trait]
-impl IdempotentTransport for JetEmailTransport {
-  fn scope(&self) -> &str { &self.scope }
-
-  fn request_timeout(&self) -> Duration { self.timeout }
-
-  fn retention(&self) -> Duration { Duration::from_secs(24 * 60 * 60) }
-
-  async fn send_idempotent(
-    &self,
-    key: &IdempotencyKey,
-    message: &PreparedMessage,
-  ) -> Result<Self::Receipt, Self::Error> {
-    self.submit(Some(key), message).await
-  }
-}
-
+/// Provider payload available only through checked admission.
 #[derive(serde::Serialize)]
-struct Payload<'a> {
+pub struct Payload<'a> {
   from:    String,
   to:      Vec<String>,
   cc:      Vec<String>,

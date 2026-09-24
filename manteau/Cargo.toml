@@ -18,16 +18,17 @@ workspace = true
 all-features = true
 
 [features]
-default = []
-mailjet = ["dep:manteau-mailjet"]
-cloudflare = ["dep:manteau-cloudflare"]
-jetemail = ["dep:manteau-jetemail"]
+default = ["tls-rustls"]
+mailjet = ["dep:manteau-mailjet", "dep:manteau-http"]
+cloudflare = ["dep:manteau-cloudflare", "dep:manteau-http"]
+jetemail = ["dep:manteau-jetemail", "dep:manteau-http"]
 mock = ["dep:manteau-mock"]
 stdout = ["dep:manteau-stdout"]
-tls-rustls = ["manteau-mailjet?/tls-rustls", "manteau-cloudflare?/tls-rustls", "manteau-jetemail?/tls-rustls"]
-tls-native = ["manteau-mailjet?/tls-native", "manteau-cloudflare?/tls-native", "manteau-jetemail?/tls-native"]
+tls-rustls = ["manteau-http?/tls-rustls"]
+tls-native = ["manteau-http?/tls-native"]
 
 [dependencies]
+manteau-http = { workspace = true, optional = true }
 manteau-core.workspace = true
 manteau-macros.workspace = true
 manteau-mailjet = { workspace = true, optional = true }

@@ -1,38 +1,40 @@
 use manteau_core::{
-  Address, Envelope, HeaderText, IdempotencyKey, IdempotentTransport,
-  PreparedMessage, Receipt, Recipients, Rendered, TransportFailure,
+  Acceptance, Address, Envelope, HeaderText, IdempotencyKey,
+  IdempotentTransport, PreparedMessage, Receipt, Recipients, Rendered, Sender,
+  Submission, Transport, TransportFailure, http::HttpConfig,
 };
-use manteau_jetemail::{JetEmailConfig, JetEmailErrorKind, JetEmailTransport};
+use manteau_http::HttpClient;
+use manteau_jetemail::{JetEmail, JetEmailErrorKind};
 use wiremock::{
   Mock, MockServer, ResponseTemplate,
   matchers::{header, method, path},
 };
 
-struct Fixture;
-impl Fixture {
-  fn message() -> PreparedMessage {
-    PreparedMessage::new(
-      Envelope::new(
-        Address::new("from@example.com".parse().unwrap())
-          .name(HeaderText::new("Sender").unwrap()),
-        Recipients::to(Address::new("to@example.com".parse().unwrap())),
-        HeaderText::new("Hello").unwrap(),
-      ),
-      Rendered::new("<p>Private</p>", "Private").unwrap(),
-    )
-  }
+fn message() -> PreparedMessage {
+  PreparedMessage::new(
+    Envelope::new(
+      Address::new("from@example.com".parse().unwrap())
+        .name(HeaderText::new("Sender").unwrap()),
+      Recipients::to(Address::new("to@example.com".parse().unwrap())),
+      HeaderText::new("Hello").unwrap(),
+    ),
+    Rendered::new("<p>Private</p>", "Private").unwrap(),
+  )
+}
 
-  fn transport(server: &MockServer) -> JetEmailTransport {
-    JetEmailTransport::new("test-token", JetEmailConfig {
-      endpoint: format!("{}/email", server.uri()),
-      ..Default::default()
-    })
-    .unwrap()
-  }
+fn sender(server: &MockServer) -> Sender<JetEmail, HttpClient> {
+  Sender::new(
+    JetEmail::with_config(
+      "test-token",
+      HttpConfig::new(&format!("{}/email", server.uri())).unwrap(),
+    )
+    .unwrap(),
+    HttpClient::new().unwrap(),
+  )
 }
 
 #[tokio::test]
-async fn retries_preserve_key_body_and_acceptance() {
+async fn replay_preserves_key_and_body() {
   let server = MockServer::start().await;
   Mock::given(method("POST"))
     .and(path("/email"))
@@ -45,57 +47,64 @@ async fn retries_preserve_key_body_and_acceptance() {
     .expect(2)
     .mount(&server)
     .await;
-  let mail = Fixture::transport(&server);
+
+  let mail = sender(&server);
   let key = IdempotencyKey::try_from("notification-1".to_owned()).unwrap();
-  let message = Fixture::message();
-  let persisted = serde_json::to_vec(&message).unwrap();
-  let restored: PreparedMessage = serde_json::from_slice(&persisted).unwrap();
-  for message in [&message, &restored] {
+  let submission = Submission::new(key, message(), &mail);
+  let persisted = serde_json::to_vec(&submission).unwrap();
+  let restored: Submission = serde_json::from_slice(&persisted).unwrap();
+
+  for attempt in [&submission, &restored] {
     assert_eq!(
-      mail.send_idempotent(&key, message).await.unwrap().ids()[0].as_str(),
+      mail.send_idempotent(attempt).await.unwrap().ids()[0].as_str(),
       "original"
     );
   }
+
   let requests = server.received_requests().await.unwrap();
   assert_eq!(requests[0].body, requests[1].body);
   let body: serde_json::Value =
     serde_json::from_slice(&requests[0].body).unwrap();
   assert_eq!(body["to"], serde_json::json!(["to@example.com"]));
   assert_eq!(body["html"], "<p>Private</p>");
-  assert_eq!(mail.retention(), std::time::Duration::from_secs(86400));
 }
 
 #[tokio::test]
-async fn failure_classification_does_not_hide_uncertain_acceptance() {
-  for (status, body, expected) in [
+async fn rejection_and_uncertainty_are_distinct() {
+  for (status, body, acceptance, provider_kind) in [
     (
       409,
       serde_json::json!({"code":"IDEMPOTENCY_BODY_MISMATCH"}),
-      JetEmailErrorKind::Conflict,
+      Acceptance::Unknown,
+      Some(JetEmailErrorKind::Conflict),
     ),
     (
       409,
       serde_json::json!({"code":"IDEMPOTENCY_IN_FLIGHT"}),
-      JetEmailErrorKind::InFlight,
+      Acceptance::Unknown,
+      Some(JetEmailErrorKind::InFlight),
     ),
-    (429, serde_json::json!({}), JetEmailErrorKind::RateLimited),
-    (
-      401,
-      serde_json::json!({}),
-      JetEmailErrorKind::Authentication,
-    ),
+    (429, serde_json::json!({}), Acceptance::NotAccepted, None),
+    (401, serde_json::json!({}), Acceptance::NotAccepted, None),
     (
       500,
       serde_json::json!({"private":"secret"}),
-      JetEmailErrorKind::Uncertain,
+      Acceptance::Unknown,
+      None,
     ),
     (
       201,
       serde_json::json!({"id":""}),
-      JetEmailErrorKind::Uncertain,
+      Acceptance::Unknown,
+      Some(JetEmailErrorKind::Response),
     ),
-    (201, serde_json::json!({}), JetEmailErrorKind::Uncertain),
-    (302, serde_json::json!({}), JetEmailErrorKind::Uncertain),
+    (
+      201,
+      serde_json::json!({}),
+      Acceptance::Unknown,
+      Some(JetEmailErrorKind::Response),
+    ),
+    (302, serde_json::json!({}), Acceptance::Unknown, None),
   ] {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
@@ -107,18 +116,22 @@ async fn failure_classification_does_not_hide_uncertain_acceptance() {
       .expect(1)
       .mount(&server)
       .await;
-    let mail = Fixture::transport(&server);
-    let key = IdempotencyKey::try_from("one".to_owned()).unwrap();
-    let error = mail
-      .send_idempotent(&key, &Fixture::message())
-      .await
-      .unwrap_err();
-    assert_eq!(error.kind(), &expected);
+
+    let mail = sender(&server);
+    let submission = Submission::new(
+      IdempotencyKey::try_from("one".to_owned()).unwrap(),
+      message(),
+      &mail,
+    );
+    let error = mail.send_idempotent(&submission).await.unwrap_err();
+    assert_eq!(error.acceptance(), acceptance);
     assert!(!error.to_string().contains("secret"));
-    if expected == JetEmailErrorKind::Uncertain {
-      assert!(!error.is_transient());
+    if let Some(kind) = provider_kind {
+      assert!(
+        matches!(error, manteau_core::SendError::Provider(ref source) if source.kind() == kind)
+      );
     }
-    if expected == JetEmailErrorKind::RateLimited {
+    if status == 429 {
       assert_eq!(
         error.retry_after(),
         Some(std::time::Duration::from_secs(12))
@@ -128,21 +141,20 @@ async fn failure_classification_does_not_hide_uncertain_acceptance() {
 }
 
 #[test]
-fn deserialization_preserves_input_contracts() {
+fn persisted_input_remains_checked() {
   for key in ["".to_owned(), "x".repeat(257), "key\r\ninjected".to_owned()] {
     assert!(IdempotencyKey::try_from(key.clone()).is_err());
     assert!(
       serde_json::from_value::<IdempotencyKey>(serde_json::json!(key)).is_err()
     );
   }
-  let key = IdempotencyKey::try_from("event/1".to_owned()).unwrap();
-  assert_eq!(serde_json::to_string(&key).unwrap(), "\"event/1\"");
+
   for (field, value) in [
     ("from", serde_json::json!("bad")),
     ("to", serde_json::json!([])),
     ("subject", serde_json::json!("x\nBcc: y")),
   ] {
-    let mut content = serde_json::to_value(Fixture::message()).unwrap();
+    let mut content = serde_json::to_value(message()).unwrap();
     match field {
       "from" => content["envelope"]["from"]["email"] = value,
       "to" => content["envelope"]["recipients"]["to"] = value,
@@ -150,4 +162,76 @@ fn deserialization_preserves_input_contracts() {
     }
     assert!(serde_json::from_value::<PreparedMessage>(content).is_err());
   }
+}
+
+#[tokio::test]
+async fn response_limit_is_enforced_after_dispatch() {
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .respond_with(
+      ResponseTemplate::new(201)
+        .set_body_string("a response larger than eight bytes"),
+    )
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let config = HttpConfig::new(&format!("{}/email", server.uri()))
+    .unwrap()
+    .response_limit(std::num::NonZeroUsize::new(8).unwrap());
+  let mail = Sender::new(
+    JetEmail::with_config("token", config).unwrap(),
+    HttpClient::new().unwrap(),
+  );
+  let error = mail.send(&message()).await.unwrap_err();
+  assert!(matches!(
+    error,
+    manteau_core::SendError::Http(manteau_core::http::HttpError::ResponseLimit)
+  ));
+  assert_eq!(error.acceptance(), Acceptance::Unknown);
+}
+
+#[tokio::test]
+async fn total_request_timeout_keeps_acceptance_unknown() {
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .respond_with(
+      ResponseTemplate::new(201)
+        .set_delay(std::time::Duration::from_millis(200))
+        .set_body_json(serde_json::json!({"id":"late"})),
+    )
+    .mount(&server)
+    .await;
+
+  let config = HttpConfig::new(&format!("{}/email", server.uri()))
+    .unwrap()
+    .timeout(std::time::Duration::from_millis(20))
+    .unwrap();
+  let mail = Sender::new(
+    JetEmail::with_config("token", config).unwrap(),
+    HttpClient::new().unwrap(),
+  );
+  let error = mail.send(&message()).await.unwrap_err();
+  assert!(matches!(
+    error,
+    manteau_core::SendError::Http(manteau_core::http::HttpError::Network(_))
+  ));
+  assert_eq!(error.acceptance(), Acceptance::Unknown);
+}
+
+#[tokio::test]
+async fn redirect_does_not_send_credentials_to_another_endpoint() {
+  let first = MockServer::start().await;
+  let target = MockServer::start().await;
+  Mock::given(method("POST"))
+    .respond_with(
+      ResponseTemplate::new(302)
+        .insert_header("Location", format!("{}/other", target.uri()).as_str()),
+    )
+    .expect(1)
+    .mount(&first)
+    .await;
+  let error = sender(&first).send(&message()).await.unwrap_err();
+  assert_eq!(error.acceptance(), Acceptance::Unknown);
+  assert!(target.received_requests().await.unwrap().is_empty());
 }

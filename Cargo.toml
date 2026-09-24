@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["manteau", "manteau-core", "manteau-macros", "manteau-mailjet", "manteau-cloudflare", "manteau-jetemail", "manteau-mock", "manteau-stdout"]
+members = ["manteau-http", "manteau", "manteau-core", "manteau-macros", "manteau-mailjet", "manteau-cloudflare", "manteau-jetemail", "manteau-mock", "manteau-stdout"]
 
 [workspace.package]
 version = "0.2.0"
@@ -14,6 +14,7 @@ repository = "https://github.com/zmontgo/manteau"
 unsafe_code = "forbid"
 
 [workspace.dependencies]
+manteau-http = { version = "=0.2.0", path = "manteau-http", default-features = false }
 manteau = { version = "=0.2.0", path = "manteau" }
 manteau-core = { version = "=0.2.0", path = "manteau-core" }
 manteau-macros = { version = "=0.2.0", path = "manteau-macros" }

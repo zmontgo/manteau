@@ -886,6 +886,7 @@ version = "0.2.0"
 dependencies = [
  "manteau-cloudflare",
  "manteau-core",
+ "manteau-http",
  "manteau-jetemail",
  "manteau-macros",
  "manteau-mailjet",
@@ -901,9 +902,8 @@ dependencies = [
 name = "manteau-cloudflare"
 version = "0.2.0"
 dependencies = [
- "async-trait",
  "manteau-core",
- "reqwest",
+ "manteau-http",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -922,22 +922,39 @@ dependencies = [
  "mrml",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
  "url",
  "validator",
 ]
 
 [[package]]
-name = "manteau-jetemail"
+name = "manteau-http"
 version = "0.2.0"
 dependencies = [
  "async-trait",
+ "httpdate",
  "manteau-core",
  "reqwest",
  "serde",
  "serde_json",
- "sha2",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "url",
+ "wiremock",
+]
+
+[[package]]
+name = "manteau-jetemail"
+version = "0.2.0"
+dependencies = [
+ "manteau-core",
+ "manteau-http",
+ "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -959,9 +976,8 @@ dependencies = [
 name = "manteau-mailjet"
 version = "0.2.0"
 dependencies = [
- "async-trait",
  "manteau-core",
- "reqwest",
+ "manteau-http",
  "serde",
  "serde_json",
  "thiserror 2.0.18",

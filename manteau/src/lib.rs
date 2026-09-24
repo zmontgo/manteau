@@ -9,11 +9,17 @@ pub mod prelude {
   pub use crate::mjml;
 }
 #[cfg(feature = "cloudflare")]
-pub use manteau_cloudflare::*;
+pub use manteau_cloudflare::{
+  Cloudflare, CloudflareError, CloudflareErrorKind, CloudflareReceipt,
+};
 #[cfg(feature = "jetemail")]
-pub use manteau_jetemail::*;
+pub use manteau_jetemail::{
+  JetEmail, JetEmailError, JetEmailErrorKind, JetEmailReceipt,
+};
 #[cfg(feature = "mailjet")]
-pub use manteau_mailjet::*;
+pub use manteau_mailjet::{
+  Mailjet, MailjetError, MailjetErrorKind, MailjetReceipt,
+};
 #[cfg(feature = "mock")]
 pub use manteau_mock::*;
 #[cfg(feature = "stdout")]

@@ -1,12 +1,12 @@
 [package]
-name = "manteau-cloudflare"
+name = "manteau-http"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Cloudflare transport for Manteau prepared emails."
+description = "Bounded HTTP submission mechanism for Manteau adapters."
 readme = "README.md"
 keywords = ["email", "mjml", "transactional"]
 categories = ["email", "template-engine"]
@@ -17,14 +17,23 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["tls-rustls"]
+tls-rustls = ["reqwest/rustls"]
+tls-native = ["reqwest/native-tls"]
+
 [dependencies]
 manteau-core.workspace = true
+async-trait.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+reqwest.workspace = true
+url.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
+httpdate = "1"
+
 [dev-dependencies]
-manteau-http = { workspace = true, features = ["tls-native"] }
 tokio.workspace = true
 wiremock.workspace = true
